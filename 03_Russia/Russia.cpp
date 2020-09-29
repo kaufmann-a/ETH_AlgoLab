@@ -1,14 +1,13 @@
-#include<iostream>
+l#include<iostream>
 #include<fstream>
 #include<vector>
 #include<set>
 
-int solve(std::vector<std::vector<std::vector<int>>> &dp, std::vector<int> &coins, int left, int right, int currPers, int k ,int totP){
+int solve(std::vector<std::vector<int>> &dp, std::vector<int> &coins, int left, int right, int currPers, int k ,int totP){
 
 	if (left > right){
 		return 0;
 	}
-
 
 	if (left == right){
 		if (currPers == k){
@@ -18,13 +17,8 @@ int solve(std::vector<std::vector<std::vector<int>>> &dp, std::vector<int> &coin
         }
 	}
 
-    int dpPersonIndx = 0;
-    if (currPers == k){
-        dpPersonIndx = 1;
-    }
-
-    if (dp[dpPersonIndx][left][right] != -1){
-        return dp[dpPersonIndx][left][right];
+    if (dp[left][right] != -1){
+        return dp[left][right];
     }
 
     int res = 0;
@@ -34,7 +28,7 @@ int solve(std::vector<std::vector<std::vector<int>>> &dp, std::vector<int> &coin
     } else {
         res = std::max(coins[left] + solve(dp, coins, left+1, right, nextPerson, k, totP), coins[right] + solve(dp, coins, left, right-1, nextPerson, k, totP));
     }
-    dp[dpPersonIndx][left][right] = res;
+    dp[left][right] = res;
     return res;
 
 }
@@ -43,10 +37,10 @@ int solve(std::vector<std::vector<std::vector<int>>> &dp, std::vector<int> &coin
 void testcase(){
 	int n, m, k; std::cin >> n; std::cin >> m; std::cin >> k;
 	std::vector<int> coins(n);
-	std::vector<std::vector<std::vector<int>>> dp(2, std::vector<std::vector<int>>(n, std::vector<int>(n, -1)));
+	std::vector<std::vector<int>> dp(n, std::vector<int>(n, -1));
 
 	for (int i = 0; i < n; i++){
-		std::cin >> coins.at(i);
+		std::cin >> coins[i];
 	}
 
 	int res = solve(dp, coins, 0, n-1, 0, k, m);
@@ -66,8 +60,5 @@ int main(){
 	for (int i = 0; i < t; i++){
 		testcase();
 	}
-
-
-
 	return 0;
 }
