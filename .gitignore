@@ -95,3 +95,7 @@ Debug/
 testsets/
 .vscode/
 *.json
+build/
+**/CMakeLists.txt
+debug_test_data.txt
+.algolabVS
