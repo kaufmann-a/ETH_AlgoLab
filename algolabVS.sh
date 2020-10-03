@@ -302,7 +302,7 @@ case "$1" in
         mkdir "$vscode_directory"
 
         debug_test_data_filename="${destination}/debug_test_data.txt"
-        gitignore_filename="${destination}/.gitignore"
+        #gitignore_filename="${destination}/.gitignore"
         launch_filename="${vscode_directory}/launch.json"
         tasks_filename="${vscode_directory}/tasks.json"
 
@@ -317,9 +317,9 @@ case "$1" in
         if [ ! -f "${debug_test_data_filename}" ]; then
             echo "0" > "${debug_test_data_filename}"
         fi
-        if [ ! -f "${gitignore_filename}" ]; then
-            echo "$GITIGNORE" > "${gitignore_filename}"
-        fi
+        #if [ ! -f "${gitignore_filename}" ]; then
+        #    echo "$GITIGNORE" > "${gitignore_filename}"
+        #fi
         echo ""
     	echo "Created VS code config files"
     	echo ""
@@ -360,10 +360,10 @@ case "$1" in
         echo "Finished creating project files."
         echo ""
 
-        //git init
-        //echo ""
-        //echo "Git init."
-        //echo ""
+        #git init
+        #echo ""
+        #echo "Git init."
+        #echo ""
         ;;
     edit)
         eval "$IDE_COMMAND"
