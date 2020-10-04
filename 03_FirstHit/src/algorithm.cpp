@@ -30,6 +30,18 @@ void testcase(const int n) {
 	EK::Point_2 ep(x, y), eq(a, b);
 	EK::Ray_2 ray(ep, eq);
 
+	std::vector<EK::Segment_2> segments(n);
+	for (int i = 0; i < n; i++){
+		long r; std::cin >> r;
+		long s; std::cin >> s;
+		long t; std::cin >> t;
+		long u; std::cin >> u;
+		EK::Point_2 segS(r, s), segT(t, u);
+		EK::Segment_2 seg(segS, segT);
+		segments[i] = seg;
+	}
+	std::random_shuffle(segments.begin(), segments.end());
+
 	EK::FT bestdist = std::numeric_limits<long>::max();
 	EK::Segment_2 bestseg;
 	EK::Point_2 bestPoint(0, 0);
@@ -37,40 +49,25 @@ void testcase(const int n) {
 
 	bool intersectionAnywhere = false;
 	//Create segments and check for intersect
-	for (int i = 0; i < n; i++){
-
-		long r; std::cin >> r;
-		long s; std::cin >> s;
-		long t; std::cin >> t;
-		long u; std::cin >> u;
-		EK::Point_2 segS(r, s), segT(t, u);
-		EK::Segment_2 seg(segS, segT);
+	for (EK::Segment_2 curseg : segments){
+		
 		bool doIntersect = false;
 		if (!intersectionAnywhere){
-			doIntersect = do_intersect(ray, seg);
+			doIntersect = do_intersect(ray, curseg);
 		} else {
-			doIntersect = do_intersect(bestseg, seg);
+			doIntersect = do_intersect(bestseg, curseg);
 		}
 
 		if (doIntersect){
 			intersectionAnywhere = true;
-			auto o = CGAL::intersection(seg, ray);
+			auto o = CGAL::intersection(curseg, ray);
 			if (const EK::Point_2* op = boost::get<EK::Point_2>(&*o)){
-				// EK::FT dist = CGAL::squared_distance(*op, ep);
-				// if (dist < bestdist){
-				// 	bestdist = dist;
-				// 	bestPoint = *op;
-				// }
 				bestseg = EK::Segment_2(ep, *op);
 			} else if (const EK::Segment_2* op = boost::get<EK::Segment_2>(&*o)) {
-				
-				EK::FT dist_source = CGAL::squared_distance(op->source(), ep);
-				EK::FT dist_target = CGAL::squared_distance(op->target(), ep);
-				if (dist_source < dist_target){
-					bestPoint = op->source();
-					bestseg = EK::Segment_2(ep, op->source());
+				if (EK::Segment_2(ep, op->source()).has_on(bestseg.target())){
+					bestseg = EK::Segment_2(ep, op->target()); 
 				} else {
-					bestseg = EK::Segment_2(ep, op->target());
+					bestseg = EK::Segment_2(ep, op->source());
 				}
 			} else {
 				std::cout << "What the heck is happening here" << std::endl;
@@ -96,5 +93,4 @@ int main() {
 		testcase(t);
 		std::cin >> t;
 	}
-
 }
