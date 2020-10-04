@@ -31,7 +31,7 @@ On the ETH lab computers it takes up 8-10 minutes, so be patient (you can keep c
  Also, check in the bottom right corner, when hovering over the little DB icon, whether it states 'Parsing Paused'. If yes, click the symbol and resume parsing.
 
 ### 1.2 Install algolabVS command
-1. Download the this file and place it wherever you want.
+1. Download thae this file and place it wherever you want.
 2. Cd to the directory where you placed this file.
 3. Run `chmod +x ./algolabVS.sh` to make the script executable.
 4. Run `./algolabVS.sh install`
