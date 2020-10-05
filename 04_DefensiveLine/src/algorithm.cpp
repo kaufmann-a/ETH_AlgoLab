@@ -26,22 +26,20 @@ void testcase() {
 	int rightIdx = 0;
 	int curMaxPlayersAttacked = 0;
 	int curSum = 0;
-	int counter = 0;
-	while (rightIdx < n && counter < 100){
-		while (rightIdx < n && curSum < k && counter < 100){
+	while (rightIdx < n){
+		while (rightIdx < n && curSum < k){
 			curSum += def_values[rightIdx];
-			std::cout << "first while: " << curSum << std::endl;
+			//std::cout << "first while: " << curSum << std::endl;
 			dp[rightIdx+1] = dp[rightIdx]; //due to basecase dp table indexes are always +1
 			rightIdx++;
-			counter++;
 		}
 		
-		while (leftIdx < rightIdx && curSum >= k && counter < 100){
+		while (leftIdx < rightIdx && curSum >= k){
 			if (curSum == k){
-				std::cout << "second while: " << curSum << std::endl;
+				//std::cout << "second while: " << curSum << std::endl;
 				int tempPlayersAttacked = rightIdx - leftIdx + dp[leftIdx];
-				std::cout << "tempPlayersattacked: " << tempPlayersAttacked << std::endl;
-				std::cout << "curMaxPlayersattacked: " << curMaxPlayersAttacked << std::endl;
+				//std::cout << "tempPlayersattacked: " << tempPlayersAttacked << std::endl;
+				//std::cout << "curMaxPlayersattacked: " << curMaxPlayersAttacked << std::endl;
 				if (tempPlayersAttacked > curMaxPlayersAttacked){
 					dp[rightIdx] = tempPlayersAttacked;
 					nr.insert(rightIdx - leftIdx);
@@ -50,20 +48,18 @@ void testcase() {
 			} 
 			
 			curSum -= def_values[leftIdx];
-			std::cout << "curSum sendwhile: " << curSum << std::endl;
+			//std::cout << "curSum sendwhile: " << curSum << std::endl;
 			leftIdx++;
-			counter++;
 		}
-		counter++;
 	}
 
 	int sum = 0; 
 	int count = 0;
-	std::cout << "m is: " << m << std::endl; 
+	//std::cout << "m is: " << m << std::endl; 
 	for (std::multiset<int>::reverse_iterator it = nr.rbegin(); it != nr.rend(); it++){
 		if (count < m){
 			sum += *it;
-			std::cout << "sumcalc: " << *it << std::endl;
+			//std::cout << "sumcalc: " << *it << std::endl;
 		}
 		count++;
 	}
@@ -78,7 +74,7 @@ void testcase() {
 int main() {
 	std::ios_base::sync_with_stdio(false);
 
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t; std::cin >> t;
