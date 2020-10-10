@@ -136,6 +136,7 @@ CXX_TEMPLATE=$(cat <<'EOF'
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <fstream>
 
 void testcase() {
 	// TODO:
@@ -149,6 +150,7 @@ int main() {
 	std::cin >> t;
 	for (int i = 0; i < t; ++i)
 		testcase();
+	return 0;
 }
 EOF
 )
