@@ -53,7 +53,7 @@ void testcase() {
 			std::pair<edge_desc, bool> edge = boost::edge(boost::source(*it, G), boost::target(*it, G), G); //Look if edge already inserted in G
 			if (edge.second){ //Edge already inserted by another species, check if smaller weight
 				int weight_g = boost::get(boost::edge_weight_t(), G, edge.first);
-				if (weight_i > weight_g){
+				if (weight_i < weight_g){
 					boost::put(boost::edge_weight_t(), G, edge.first, weight_i);
 				}
 			} else {
