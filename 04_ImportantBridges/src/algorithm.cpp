@@ -11,22 +11,16 @@
 #include <map>
 
 struct edge_component_t {
-	enum {
-		num = 555
-	};
 	typedef boost::edge_property_tag kind;
-} edge_component;
-
-
-//typedef boost::property<boost::edge_property_tag, int> kind;
-
-
+};
 
 void testcase() {
+	//Typedefs
+	edge_component_t edge_component;
 	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, boost::no_property, boost::property<edge_component_t, std::size_t>> graph;
 	typedef boost::graph_traits<graph>::edge_iterator edge_it;
-	//typedef boost::graph_traits<graph>::edge_descriptor edge_desc;
 
+	//Read graph
 	int n, m; std::cin >> n; std::cin >> m;
 	graph G(n);
 
@@ -35,9 +29,11 @@ void testcase() {
 		boost::add_edge(e1, e2, G);
 	}
 
+	//Calculate biconnected components
 	boost::property_map<graph, edge_component_t>::type component = boost::get(edge_component, G);
 	std::size_t num_cops = boost::biconnected_components(G, component);
 
+	//Insert all vertexes to component they belong to
 	std::vector<std::set<int>> list(num_cops);
 	edge_it e_beg, e_end;
 	for (boost::tie(e_beg, e_end) = boost::edges(G); e_beg != e_end; ++e_beg){
@@ -49,6 +45,7 @@ void testcase() {
 		list[comp].insert(target);
 	}
 
+	//Search bridges
 	std::map<int, std::set<int>> printout;
 	int nrBridges = 0;
 	for (std::vector<std::set<int>>::iterator it = list.begin(); it != list.end(); it++){
@@ -82,6 +79,7 @@ void testcase() {
 		}
 	}
 
+	//Output bridges
 	std:: cout << nrBridges << std::endl;
 	for (std::map<int, std::set<int>>::iterator it = printout.begin(); it != printout.end(); it++){
 		int frst = it->first;
