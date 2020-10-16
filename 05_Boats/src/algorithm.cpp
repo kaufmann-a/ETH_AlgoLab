@@ -7,44 +7,52 @@
 #include <vector>
 #include <fstream>
 
-struct Boat {
-	int nr;
-	std::pair<int, int> pos;
-
-	Boat(int nr, std::pair<int, int> pos) : nr(nr), pos(pos) {}
-};
-
 //Order boats by end of the boat
-bool operator < (const Boat &p1, const Boat &p2){
-	return p1.pos.second < p2.pos.second;
+bool sortbysec (const std::pair<int, int> &p1, const std::pair<int, int> &p2){
+	return p1.second < p2.second;
 }
 
 
 void testcase() {
 	int n; std::cin >> n;
 
-	std::vector<Boat> boats;
+	std::vector<std::pair<int, int>> boats;
 	for (int i = 0; i < n; i++){
 		int l, p; std::cin >> l >> p;
-		for (int j = 0; j <= l; j++){
-			boats.push_back(Boat(i, std::make_pair(p-l+j, p+j)));
-		}
+		boats.push_back(std::make_pair(p-l, p));
 	}
 
-	std::sort(boats.begin(), boats.end());
-	// for (const Boat &boat : boats){
-	// 	std::cout << boat.pos.first << " " << boat.pos.second << std::endl;
-	// }
-
-	std::vector<bool> boatPlaced(n, false);
+	std::sort(boats.begin(), boats.end(), sortbysec);
 	int nrBoatsPlaced = 1;
-	int curRightEdge = boats[0].pos.second;
-	boatPlaced[0] = true;
-	for (const Boat &boat : boats){
-		if (boat.pos.first >= curRightEdge && !boatPlaced[boat.nr]){
-			nrBoatsPlaced++;
-			curRightEdge = boat.pos.second;
-			boatPlaced[boat.nr] = true;
+	int curRightEdge = boats[0].second;
+	int curBoat = 1;
+	while (curBoat < n){
+		//Place next boat
+		int nextMinRightEdge;
+		if (curRightEdge + boats[curBoat].second - boats[curBoat].first < boats[curBoat].second){
+			nextMinRightEdge = boats[curBoat].second;
+		} else {
+			nextMinRightEdge = curRightEdge + boats[curBoat].second - boats[curBoat].first;
+		}
+		bool needToIterate = false;
+		while(nextMinRightEdge > boats[curBoat].second && curBoat < n) {
+			//Place boat optimaly
+			needToIterate = true;
+			int temp;
+			if (curRightEdge + boats[curBoat].second - boats[curBoat].first < boats[curBoat].second){
+				temp = boats[curBoat].second;
+			} else {
+				temp = curRightEdge + boats[curBoat].second - boats[curBoat].first;
+			}
+			if (temp < nextMinRightEdge){
+				nextMinRightEdge = temp;
+			}
+			curBoat++;
+		}
+		curRightEdge = nextMinRightEdge;
+		nrBoatsPlaced++;
+		if (!needToIterate){
+			curBoat++;
 		}
 	}
 	std::cout << nrBoatsPlaced << std::endl;
