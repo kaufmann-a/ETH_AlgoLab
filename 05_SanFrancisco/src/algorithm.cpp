@@ -6,62 +6,70 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
-#include <boost/graph/adjacency_list.hpp>
 
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, boost::property<boost::vertex_out_degree_t, int>, boost::property<boost::edge_weight_t, long>> weighted_graph;
-typedef boost::graph_traits<weighted_graph>::edge_descriptor edge_desc;
-typedef boost::graph_traits<weighted_graph>::vertex_descriptor vertex_desc;
-typedef boost::graph_traits<weighted_graph>::vertex_iterator vertex_it;
-typedef boost::graph_traits<weighted_graph>::out_edge_iterator out_edge_it;
+long solveDP(std::vector<std::vector<std::pair<int, long>>> &graph, std::vector<std::vector<long>> &dp, int k, int node){
+  if (k == 0){
+    return 0;
+  }
+
+  if (dp[node][k] != -1){
+    return dp[node][k];
+  }
+
+  //Check if cur node is Weayaya
+  if (graph[node].size() == 0){
+    long best = solveDP(graph, dp, k, 0);
+    dp[node][k] = best;
+    return best;
+  } else {
+    long max = 0;
+    for (uint i = 0; i < graph[node].size(); i++){
+      long nextVal = solveDP(graph, dp, k-1, graph[node][i].first ) + graph[node][i].second;
+      if (nextVal > max){
+        max = nextVal;
+      }
+    }
+    dp[node][k] = max;
+    return dp[node][k];  
+  }
+}
+
+
 
 void testcase() {
-	int n, m, x, k; std::cin >> n >> m >> x >> k;
+	int n, m, k; long x; std::cin >> n >> m >> x >> k;
 
-	//First read in input to create graph
-	weighted_graph game_board(n);
+	std::vector<std::vector<std::pair<int, long>>> graph(n);
+	std::vector<std::vector<long>> dp(n, std::vector<long>(k+1, -1));
+
+	//Build graph
 	for (int i = 0; i < m; i++){
-		int u, v; long p; std::cin >> u >> v; std::cin >> p;
-		boost::add_edge(u, v, p, game_board);
+		int u, v; long p; std::cin >> u >> v >> p;
+		graph.at(u).push_back(std::make_pair(v, p));
 	}
+	int nrMoves = -1;
 
-	//Now, find all Weayaya verteces
-	vertex_it v_beg, v_end;
-	for (boost::tie(v_beg, v_end) = boost::vertices(game_board); v_beg != v_end; ++v_beg){
-		int whatever = 0;
-		out_edge_it oe_beg, oe_end;
-		int nr_out_edges = 0;
-		for (boost::tie(oe_beg, oe_end) = boost::out_edges(*v_beg, game_board); oe_beg != oe_end; ++oe_beg){
-			assert(boost::source(*oe_beg, game_board) == *v_beg);
-			nr_out_edges++;
+	for (int i = 0; i <= k; i++){
+		long value = solveDP(graph, dp, i, 0);
+		if (value >= x){
+			nrMoves = i;
+			break;
 		}
-		boost::put(boost::vertex_out_degree_t(), game_board, *v_beg, nr_out_edges);
+
 	}
 
-	//Create new graph without edges having no out edges
-	weighted_graph game_board_opt(n);
-	vertex_it v_beg_store, v_beg_2, v_end_2;
-	boost::tie(v_beg_store, v_end_2) = boost::vertices(game_board);
-	for (boost::tie(v_beg_2, v_end_2) = boost::vertices(game_board); v_beg_2 != v_end_2; ++v_beg_2){
-		int out_edges = boost::get(boost::vertex_out_degree_t(), game_board, *v_beg_2);
-		if (out_edges != 0){
-			out_edge_it oe_beg, oe_end;
-			for (boost::tie(oe_beg, oe_end) = boost::out_edges(*v_beg_2, game_board); oe_beg != oe_end; ++oe_beg){
-				if (boost::get(boost::vertex_out_degree_t(), game_board, boost::target(*oe_beg, game_board)) == 0){
-					boost::add_edge(*v_beg_2, 0, boost::get(boost::edge_weight_t(), game_board, *oe_beg),game_board_opt);
-				} else {
-					boost::add_edge(boost::source(*oe_beg, game_board), boost::target(*oe_beg, game_board), boost::get(boost::edge_weight_t(), game_board, *oe_beg), game_board_opt);				
-				}
-			}
-		}
+	if (nrMoves == -1){
+		std::cout << "Impossible" << std::endl;
+	} else {
+		std::cout << nrMoves << std::endl;
 	}
-
 	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
 
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test2.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
