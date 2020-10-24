@@ -43,50 +43,48 @@ void testcase() {
 	graph G(n*m*2+2);
 	edge_adder adder(G);
 
-	int source = 0;
+	int source = 2*m*n;
 	int sink = 2*m*n+1;
 
 	for (int i = 0; i < m; i++){
-		for (int j = 1; j <= n; j++){
+		for (int j = 0; j < n; j++){
 			
 			//Check type of intersection
 			bool colEdge_left = i == 0;
 			bool colEdge_right =  i == m-1;
-			bool rowEdge_top = j == 1;
-			bool rowEdge_bottom = j == n;
+			bool rowEdge_top = j == 0;
+			bool rowEdge_bottom = j == n-1;
 
-			int curIn = i*m+j;
-			int curOut = i+m+j+m*n;
+			int curIn = i*n+j;
+			int curOut = i*n+j+m*n;
 			int inUpperRow = curIn - 1;
-			int inLeftColumn = curIn - m;
+			int inLeftColumn = curIn - n;
 			int outUpperRow = curOut - 1;
-			int outLeftColumn = curOut - m;
+			int outLeftColumn = curOut - n;
 			
 			adder.add_edge(curIn, curOut, c); //Edges to limit nr of knights passing a vertex
 			//Edges connecting intersections
 			if (colEdge_left || colEdge_right){ //Corner
 				adder.add_edge(curOut, sink, 1);
-				adder.add_edge(curOut, sink, 1);
-			} 
+			}
 			if (rowEdge_top || rowEdge_bottom){
-				adder.add_edge(curOut, sink, 1);
 				adder.add_edge(curOut, sink, 1);
 			}
 
 			if (!rowEdge_top){
 				adder.add_edge(curOut, inUpperRow, 1);
 				adder.add_edge(outUpperRow, curIn, 1);
-			} 
+			}
 			if (!colEdge_left){
 				adder.add_edge(curOut, inLeftColumn, 1);
 				adder.add_edge(outLeftColumn, curIn, 1);
-			} 
+			}
 		}
 	}
 
 	for (int a = 0; a < k; a++){
 		int i, j; std::cin >> i >> j;
-		int curIn = i*m+j;
+		int curIn = i*n+j;
 		adder.add_edge(source, curIn, 1);
 	}
 
@@ -100,7 +98,7 @@ void testcase() {
 int main() {
 	std::ios_base::sync_with_stdio(false);
 
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
