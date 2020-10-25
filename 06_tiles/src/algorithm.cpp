@@ -13,7 +13,7 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> grap
 
 void testcase() {
 	int w, h; std::cin >> w >> h;
-	std::vector<std::vector<char>> garden(w, std::vector<char>(h));
+	std::vector<std::vector<char>> garden(h, std::vector<char>(w));
 	graph G(w*h);
 	int countTiles = 0;
 	for (int i = 0; i < h; i++){
@@ -21,13 +21,10 @@ void testcase() {
 			char tile; std::cin >> tile;
 			garden[i][j] = tile;
 
-			bool topRow = (i == 0);
-			//bool bottomRow = (i == h-1);
-			bool leftBorder = (j == 0);
 			int curNode = i*w+j;
 			int nodeOneRowUp = (i-1)*w+j;
 			int nodeToLeft = i*w+j-1;
-			//Check if curent pos needs tile
+			//Check if current pos needs tile
 			if (tile == 'x'){
 				continue;
 			} else {
@@ -49,7 +46,7 @@ void testcase() {
 
 	std::vector<boost::graph_traits<graph>::vertex_descriptor> mate(w*h);
 
-	bool success = boost::checked_edmonds_maximum_cardinality_matching(G, &mate[0]);
+	boost::checked_edmonds_maximum_cardinality_matching(G, &mate[0]);
 	int matchingsize = boost::matching_size(G, &mate[0]);
 	if (countTiles % 2 == 0){
 		if (matchingsize == countTiles/2){
@@ -67,7 +64,7 @@ void testcase() {
 int main() {
 	std::ios_base::sync_with_stdio(false);
 
-	std::fstream in ("./testsets/test1.in");
+	std::fstream in ("./testsets/test2.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
