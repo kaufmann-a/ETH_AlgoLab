@@ -17,12 +17,10 @@ int findLongestWay(std::vector<int> &curArray, int k){
 			curSum += curArray[rightPos];
 			rightPos++;
 		}
-		
 		while (curSum > k && leftPos <= rightPos){
 			curSum -= curArray[leftPos];
 			leftPos++;
 		}
-
 		if (curSum == k){
 			//Check if new longest way found
 			int curLength = rightPos - leftPos;
@@ -33,7 +31,6 @@ int findLongestWay(std::vector<int> &curArray, int k){
 				curSum += curArray[rightPos];
 				rightPos++;
 			}
-			
 		}
 	}
 	return curLongest;
@@ -47,17 +44,22 @@ void testcase() {
 		std::cin >> c[i];
 	}
 	std::vector<std::vector<int>> ways(w);
-	std::vector<std::vector<int>> ways_summed(w);
+	std::vector<int> index_summ_bigger_k(w);
 	for (int i = 0; i < w; i++){
 		int l; std::cin >> l;
+		int curSum = 0;
+		bool indexSaved = false;
 		for (int j = 0; j < l; j++){
 			int curNr; std::cin >> curNr;
 			ways[i].push_back(c[curNr]);
-			if (curNr == 0){
-				ways_summed[i].push_back(c[curNr]);
-			} else {
-				ways_summed[i].push_back(ways_summed[i][j-1] + c[curNr]);
+			curSum += c[curNr];
+			if (curSum >= k && !indexSaved){
+				index_summ_bigger_k[i] = j-1;
+				indexSaved = true;
 			}
+		}
+		if (!indexSaved){
+			index_summ_bigger_k[i] = ways[i].size()-1;
 		}
 	}
 
@@ -74,26 +76,16 @@ void testcase() {
 	for (int waterWay1 = 1; waterWay1 < w; waterWay1++){
 		if (ways[waterWay1][0] >= k) break;
 		for (int waterWay2 = 0; waterWay2 < waterWay1; waterWay2++){
-			//First find find for each array index at which sum is bigger k, set index to that index-1
-			int firstArrayLimitRight = 0;
-			while (ways_summed[waterWay1].size() > firstArrayLimitRight && ways_summed[waterWay1][firstArrayLimitRight] < k){
-				firstArrayLimitRight++;
-			}
-			firstArrayLimitRight--;
-			int secondArrayLimitLeft = 0;
-			while (ways_summed[waterWay2].size() > secondArrayLimitLeft && ways_summed[waterWay2][secondArrayLimitLeft] < k){
-				secondArrayLimitLeft++;
-			}
-			secondArrayLimitLeft--;
-
 			//Now invert second array and add first array for convenience
 			std::vector<int> curArray;
+			int secondArrayLimitLeft = index_summ_bigger_k[waterWay2];
+			int firstArrayRight = index_summ_bigger_k[waterWay1];
 			while(secondArrayLimitLeft > 0){
 				curArray.push_back(ways[waterWay2][secondArrayLimitLeft]);
 				secondArrayLimitLeft--;
 			}
 			int curRightIt = 0;
-			while(curRightIt <= firstArrayLimitRight){
+			while(curRightIt <= firstArrayRight){
 				curArray.push_back(ways[waterWay1][curRightIt]);
 				curRightIt++;
 			}
@@ -101,7 +93,6 @@ void testcase() {
 			if (curLongest > curLongestWay){
 				curLongestWay = curLongest;
 			}
-
 		}
 	}
 	std::cout << curLongestWay << std::endl;
@@ -110,7 +101,7 @@ void testcase() {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/test1.in");
+	std::fstream in("./testsets/test3.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
