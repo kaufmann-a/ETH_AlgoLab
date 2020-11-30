@@ -6,73 +6,76 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
-
-// Includes
 #include <iostream>
-#include <vector>
-// BGL includes 
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/connected_components.hpp>
-#include <boost/graph/strong_components.hpp>
+#include <boost/graph/push_relabel_max_flow.hpp>
 
-// Graph Type, OutEdgeList Type, VertexList Type, (un)directedS
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS> graph;
-typedef boost::graph_traits<graph>::vertex_descriptor		vertex_desc;		// Vertex Descriptor: with vecS vertex list, this is really just an int in the range [0, num_vertices(G)).	
-typedef boost::graph_traits<graph>::edge_iterator		edge_it;		// to iterate over all edges
-typedef boost::graph_traits<graph>::vertex_iterator vertex_it;
+// Graph Type with nested interior edge properties for flow algorithms
+typedef boost::adjacency_list_traits<boost::vecS, boost::vecS, boost::directedS> traits;
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, boost::no_property,
+    boost::property<boost::edge_capacity_t, long,
+        boost::property<boost::edge_residual_capacity_t, long,
+            boost::property<boost::edge_reverse_t, traits::edge_descriptor>>>> graph;
+
+typedef traits::vertex_descriptor vertex_desc;
+typedef traits::edge_descriptor edge_desc;
+
+// Custom edge adder class, highly recommended
+class edge_adder {
+  graph &G;
+
+ public:
+  explicit edge_adder(graph &G) : G(G) {}
+
+  void add_edge(int from, int to, long capacity) {
+    auto c_map = boost::get(boost::edge_capacity, G);
+    auto r_map = boost::get(boost::edge_reverse, G);
+    const auto e = boost::add_edge(from, to, G).first;
+    const auto rev_e = boost::add_edge(to, from, G).first;
+    c_map[e] = capacity;
+    c_map[rev_e] = 0; // reverse edge has no capacity!
+    r_map[e] = rev_e;
+    r_map[rev_e] = e;
+  }
+};
 
 void testcase() {
 	long n, m; std::cin >> n >> m;
 
+	graph G(n+2);
+	edge_adder adder(G);
+	long source = n;
+	long sink = n+1;
+
 	std::vector<long> balances(n);
 
+	long sumPosBalances = 0;
 	for (int i = 0; i < n; i++){
-		std::cin >> balances[i];
-	}
-	graph G(n);
-	std::vector<bool> hasOutGoingEdge(n, false);
-	for (int i = 0; i < m; i++){
-		long from, to, dij; std::cin >> from >> to >> dij;
-		hasOutGoingEdge[from] = true;
-		boost::add_edge(from, to, G);
-	}
-	// Connected components
-	// ====================
-	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
-	//int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G))); 
-	int ncc = boost::strong_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G)));
-
-	std::vector<long> balancePerComp(ncc);
-
-	for (int i = 0; i < n; i++){
-		balancePerComp[component_map[i]] += balances[i];
-	}
-
-	bool foundFreeState = false;
-	for (int i = 0; i < ncc; i++){
-		if (balancePerComp[i] > 0){
-			foundFreeState = true;
-			break;
+		long curBal; std::cin >> curBal;
+		if (curBal >= 0){
+			adder.add_edge(source, i, curBal);
+			sumPosBalances += curBal;
+		} else {
+			adder.add_edge(i, sink, -curBal);
 		}
 	}
+	for (int i = 0; i < m; i++){
+		long from, to, dij; std::cin >> from >> to >> dij;
+		adder.add_edge(from, to, dij);
+	}
+	long flow = boost::push_relabel_max_flow(G, source, sink);
 
-	// for (int i = 0; i < n; i++){
-	// 	if (!hasOutGoingEdge[i] && balances[i] > 0){
-	// 		foundFreeState = true;
-	// 	}
-	// }
-
-	if (foundFreeState){
-		std::cout << "yes" << std::endl;
-	} else {
+	if (flow >= sumPosBalances){
 		std::cout << "no" << std::endl;
+	} else {
+		std::cout << "yes" << std::endl;
 	}
 	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
