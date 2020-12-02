@@ -27,8 +27,6 @@ std::tuple<int, int, int> minCost(std::vector<std::vector<int>> &G, std::vector<
 
 	bool with_i1_taken = false;
 	int minDiff = std::numeric_limits<int>::max();
-	int Dim1OfMinDim1 = 0;
-
 	for (int curChild = 0; curChild < G[curNode].size(); curChild++){
 		int nodeNrChild =  G[curNode][curChild];
 		
