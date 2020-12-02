@@ -25,9 +25,9 @@ std::tuple<int, int, int> minCost(std::vector<std::vector<int>> &G, std::vector<
 	int min_without_i_with_i1 = 0;
 	int min_without_i_without_i1 = 0;
 
-	bool found = false;
-	int minDim1 = std::numeric_limits<int>::max();
-	int Dim2OfMinDim1 = 0;
+	bool with_i1_taken = false;
+	int minDiff = std::numeric_limits<int>::max();
+	int Dim1OfMinDim1 = 0;
 
 	for (int curChild = 0; curChild < G[curNode].size(); curChild++){
 		int nodeNrChild =  G[curNode][curChild];
@@ -39,8 +39,19 @@ std::tuple<int, int, int> minCost(std::vector<std::vector<int>> &G, std::vector<
 		int dim2 = std::get<2>(childValues);
 		min_with_i += std::min(dim0, std::min(dim1, dim2));
 
-		min_without_i_with_i1 += dim0;
+		if (dim0 <= dim1){
+			with_i1_taken = true;
+		}
+		if (dim1 <= dim0){
+			if (dim0-dim1 <= minDiff){
+				minDiff = dim0-dim1;
+			}
+		}
+		min_without_i_with_i1 += std::min(dim0, dim1);
 		min_without_i_without_i1 += std::min(dim0, dim1);
+	}
+	if (!with_i1_taken){
+		min_without_i_with_i1 += minDiff;
 	}
 	dp[curNode] = std::make_tuple(min_with_i, min_without_i_with_i1, min_without_i_without_i1);
 	return(dp[curNode]);
@@ -63,45 +74,14 @@ void testcase() {
 	//dim1: minimum at node i, not containing i but with all i+1
 	//dim2: mimimum at node i, not containing i and not containing at least one i+1
 	std::vector<std::tuple<int, int, int>> dp(n, std::tuple<int, int, int>(-1, -1, -1));
-	int min_with_i = cost[0];
-	int min_without_i_with_i1 = 0;
-	int min_without_i_without_i1 = 0;
-
-	bool minInFirstChild = false;
-	int minDim0 = std::numeric_limits<int>::max();
-	int addedForMinDim1 = 0;
-	for (int i = 0; i < adj_list[0].size(); i++){
-		int curNode = adj_list[0][i];
-
-		std::tuple<int, int, int> curSol = minCost(adj_list, cost, dp, curNode);
-		int min_d0 = std::get<0>(curSol);
-		int min_d1 = std::get<1>(curSol);
-		int min_d2 = std::get<2>(curSol);
-		min_with_i += std::min(min_d0, std::min(min_d1, min_d2));
-		min_without_i_with_i1 += min_d0;
-		min_without_i_without_i1 += std::min(min_d0, min_d1);
-
-		if (min_d0 <= min_d1 && min_d0 <= min_d2){
-			minInFirstChild = true;
-		} else {
-			if (minDim0 > min_d0){
-				minDim0 = min_d0;
-				addedForMinDim1 = std::min(min_d0, min_d1);
-			}
-		}
-	}
-	int best = std::min(min_with_i, std::min(min_without_i_with_i1, min_without_i_without_i1));
-	if (!minInFirstChild){
-		best = best - addedForMinDim1 + minDim0;
-	}
-	//std::tuple<int, int, int> sol = minCost(adj_list, cost, dp, 0);
-	std::cout << best << std::endl;
+	std::tuple<int, int, int> curSol = minCost(adj_list, cost, dp, 0);
+	std::cout << std::min(std::get<0>(curSol), std::get<1>(curSol)) << std::endl;
 	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/test2.in");
+	std::fstream in("./testsets/user_test.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
