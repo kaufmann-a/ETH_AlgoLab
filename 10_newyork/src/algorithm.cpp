@@ -40,7 +40,14 @@ void testcase() {
     std::multiset<int> curTemps;
     curTemps.insert(h[leftPointer]);
     while(visited[rightPointer] == false){
-      if (intervalSize < m){
+      int min = *curTemps.begin();
+      int max = *curTemps.rbegin();
+      if (max - min > k){
+        visited[rightPointer] = true;
+        curTemps.erase(curTemps.find(h[rightPointer]));
+        rightPointer = parents[rightPointer];
+        intervalSize--;
+      } else if (intervalSize < m){
         if (leftPointer != parents[leftPointer]){
           intervalSize++;
           leftPointer = parents[leftPointer];
@@ -50,8 +57,7 @@ void testcase() {
           rightPointer = parents[rightPointer];
         }
       } else if (intervalSize == m){
-        int min = *curTemps.begin();
-        int max = *curTemps.rbegin();
+
         //Check if cur temprange doesn't exceed k
         if (max - min <= k) { //we found a solution
           solFound.insert(leftPointer);
@@ -75,7 +81,7 @@ void testcase() {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-  std::fstream in("./testsets/test1.in");
+  std::fstream in("./testsets/sample.in");
   std::cin.rdbuf(in.rdbuf());
 
 	int t;
