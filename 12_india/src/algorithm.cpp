@@ -45,7 +45,6 @@ class edge_adder {
 };
 
 std::pair<int, int> calculateCost(int nrElephants, int c, std::vector<std::tuple<int, int, int, int>> gra, int k, int a){
-
 	// Create graph, edge adder class and propery maps
     graph G(c+1);
     edge_adder adder(G);  
@@ -78,7 +77,7 @@ std::pair<int, int> calculateCost(int nrElephants, int c, std::vector<std::tuple
 void testcase() {
 	int c, g, b, k, a; std::cin >> c >> g >> b >> k >> a;
 
-	std::vector<std::tuple<int, int, int, int>> G(c);
+	std::vector<std::tuple<int, int, int, int>> G(g);
 	for (int i = 0; i < g; i++){
 		int x, y, d, e; std::cin >> x >> y >> d >> e;
 		G[i] = std::make_tuple(x, y, d, e);
@@ -89,13 +88,8 @@ void testcase() {
 	int l = 0; 
 	int r = 5000000;
 	int curBest = 0;
-	while (l < r){
-		int curNrElephants = 0;
-		if ((r-l) % 2 == 1) { 
-			curNrElephants = l+(r-l)/2+1; 
-		} else { 
-			curNrElephants = l+(r-l)/2; 
-		}
+	while (l <= r){
+		int curNrElephants = l+(r-l)/2;
 		std::pair<int, int> result = calculateCost(curNrElephants, c, G, k, a);
 		
 		//First check if enough elephands available
@@ -109,14 +103,10 @@ void testcase() {
 			}
 		} else {
 			if (result.first < b) {
-				l = curNrElephants;
+				l = curNrElephants+1;
 				curBest = curNrElephants;
 			} else if (result.first > b) {
-				if (r == curNrElephants){
-					r -= 1;
-				} else {
-					r = curNrElephants;
-				}
+				r = curNrElephants-1;
 			} else if (result.first == b){
 				curBest = curNrElephants;
 				break;
@@ -129,7 +119,7 @@ void testcase() {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
