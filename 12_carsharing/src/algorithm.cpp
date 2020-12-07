@@ -23,6 +23,7 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, boost:
 typedef boost::graph_traits<graph>::edge_descriptor             edge_desc;
 typedef boost::graph_traits<graph>::out_edge_iterator           out_edge_it; // Iterator
 
+int MAX_TIME = 100001;
 // Custom edge adder class
 class edge_adder {
  graph &G;
@@ -46,81 +47,94 @@ class edge_adder {
 
 void testcase() {
 	int N, S; std::cin >> N >> S;
-
+	std::map<int, int> node_index;
+	
 	std::vector<int> l(S);
 	int sum_cars = 0;
 	for (int i = 0; i < S; i++){
 		std::cin >> l[i];
 		sum_cars += l[i];
+
+		int index_start = MAX_TIME*i;
+		int index_end = MAX_TIME*(i+1)-1;
+		node_index.insert(std::make_pair(index_start, node_index.size()));
+		node_index.insert(std::make_pair(index_end, node_index.size()));
 	}
 	
-	int max_time = 0;
 	std::vector<std::tuple<int, int, int, int, int>> requests(N);
 	for (int i = 0; i < N; i++){
 		int s, t, d, a, p; std::cin >> s >> t >> d >> a >> p;
 		requests[i] = std::make_tuple(s, t, d, a, p);
-		if (a > max_time){
-			max_time = a;
+		
+		int index_s = MAX_TIME*(s-1)+d;
+		if (node_index.find(index_s) == node_index.end()){
+			node_index.insert(std::make_pair(index_s, node_index.size()));
+		}
+		int index_t = MAX_TIME*(t-1)+a;
+		if (node_index.find(index_t) == node_index.end()){
+			node_index.insert(std::make_pair(index_t, node_index.size()));
 		}
 	}
-	max_time = max_time/30; //just for first 3 testsets
 
-	int nrNodes = (max_time+1)*S+2;
-	int source = (max_time+1)*S;
-	int sink = (max_time+1)*S+1;
+	int nrNodes = node_index.size()+2;
+	int source = node_index.size();
+	int sink = node_index.size()+1;
+
 	// Create graph, edge adder class and propery maps
     graph G(N);
     edge_adder adder(G);  
-    auto c_map = boost::get(boost::edge_capacity, G);
-    auto r_map = boost::get(boost::edge_reverse, G);
-    auto rc_map = boost::get(boost::edge_residual_capacity, G);
 
-	//Edges to rental stations
+	//Edges to rental stations and inside stations
 	for (int i = 0; i < S; i++){
-		adder.add_edge(source, i*(max_time+1), l[i], 0);
+		
+		int time1 = MAX_TIME*i;
+		int index1 = node_index[MAX_TIME*i];
+		adder.add_edge(source, index1, l[i], 0); //Edge to rental station
 	}
 
-	int total_cost = 0;
 	//Edges in case car not used in time segment
-	for (int i = 0; i < S; i++){
-		for (int j = 0; j < max_time; j++){
-			int from = i*(max_time+1)+j;
-			int to = from + 1;
-			adder.add_edge(from, to, sum_cars, 100);
-			total_cost++;
+	std::map<int, int>::iterator it_beg = node_index.begin();
+	int time1 = it_beg->first;
+	int index1 = it_beg->second;
+	it_beg++;
+	for (std::map<int, int>::iterator it = it_beg; it != node_index.end(); it++){
+		int time2 = it->first;
+		int index2 = it->second;
+		if (time1/MAX_TIME == time2/MAX_TIME){
+			int nrTimeSegments = time2-time1;
+			adder.add_edge(index1, index2, sum_cars, nrTimeSegments*100);
 		}
+		time1 = time2;
+		index1= index2;
 	}
 
-	//Edges for requests
+	//Edges for requests ident for node: 100'000*s_i+time (s_i = 0 ... S-1)
 	for (int i = 0; i < requests.size(); i++){
 		int s = std::get<0>(requests[i]);
 		int t = std::get<1>(requests[i]);
 		int d = std::get<2>(requests[i]);
 		int a = std::get<3>(requests[i]);
 		int p = std::get<4>(requests[i]);
-		d = d/30; //just first 3 testsets
-		a = a/30; //just first 3 testsets
 
-		int from = (s-1)*(max_time+1)+d;
-		int to = (t-1)*(max_time+1)+a;
-		int nrTimeSegments = (to % (max_time+1)) - (from % (max_time+1));
-		total_cost += nrTimeSegments - 1;
-		int cost = -p + 100 + (nrTimeSegments-1)*100;
-		adder.add_edge(from, to, 1, cost);
+		int from_time = (s-1)*MAX_TIME+d;
+		int to_time = (t-1)*MAX_TIME+a;
+		int nrTimeSegments = a-d;
+		int cost = -p + (nrTimeSegments)*100;
+		adder.add_edge(node_index[from_time], node_index[to_time], 1, cost);
 	}
 
 	//Edges to sink
 	for (int i = 0; i < S; i++){
-		int from = i*(max_time+1) + max_time;
-		adder.add_edge(from, sink, sum_cars, 0);
+		int from = MAX_TIME*(i+1)-1;
+		adder.add_edge(node_index[from], sink, sum_cars, 0);
 	}
 
 	// Option 2: Min Cost Max Flow with successive_shortest_path_nonnegative_weights  
     boost::successive_shortest_path_nonnegative_weights(G, source, sink);
     int cost2 = boost::find_flow_cost(G);
-	int profit = (-cost2) + (max_time*sum_cars*100);
+	int profit = (-cost2) + ((MAX_TIME-1)*sum_cars*100);
 	std::cout << profit << std::endl;
-
+	int s_flow = 0;
 	return;
 }
 
