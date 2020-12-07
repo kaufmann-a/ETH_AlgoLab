@@ -8,9 +8,7 @@
 #include <algorithm>
 #include <fstream>
 
-
 typedef CGAL::Exact_predicates_exact_constructions_kernel K;
-
 typedef CGAL::Triangulation_vertex_base_2<K> Vb;
 typedef CGAL::Triangulation_face_base_with_info_2<K::FT,K> Fb;
 typedef CGAL::Triangulation_data_structure_2<Vb,Fb> Tds;
@@ -90,7 +88,7 @@ int main(){
   std::ios_base::sync_with_stdio(false);
   std::fstream in("./testsets/sample.in");
   std::cin.rdbuf(in.rdbuf());
-  //trace(INF);
+
   int T;
   std::cin >> T;
   while(T--) testcase();
