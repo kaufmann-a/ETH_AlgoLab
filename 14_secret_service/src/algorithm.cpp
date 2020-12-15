@@ -50,92 +50,96 @@ class edge_adder {
 };
 
 void testcase() {
-	int n, m, a, s, c, d; std::cin >> n >> m >> a >> s >> c >> d;
+  int n, m, a, s, c, d; std::cin >> n >> m >> a >> s >> c >> d;
 
-	weighted_graph G(n);
-  	weight_map weights = boost::get(boost::edge_weight, G);
+  weighted_graph G(n);
+    weight_map weights = boost::get(boost::edge_weight, G);
 
-	for (int i = 0; i < m; i++){
-		char w; int x, y, z; std::cin >> w >> x >> y >> z;
-		edge_desc e1;
-		e1 = boost::add_edge(x, y, G).first; weights[e1]=z;
-		if (w == 'L'){
-			edge_desc e2;
-			e2 = boost::add_edge(y, x, G).first; weights[e2] = z;
-		}
-	}
+  for (int i = 0; i < m; i++){
+    char w; int x, y, z; std::cin >> w >> x >> y >> z;
+    edge_desc e1;
+    e1 = boost::add_edge(x, y, G).first; weights[e1]=z;
+    if (w == 'L'){
+      edge_desc e2;
+      e2 = boost::add_edge(y, x, G).first; weights[e2] = z;
+    }
+  }
 
-	std::vector<int> agents(a, 0);
-	for (int i = 0; i < a; i++){
-		std::cin >> agents[i];
-	}
-	std::vector<int> shelters(s, 0);
-	for (int i = 0; i < s; i++){
-		std::cin >> shelters[i];
-	}
+  std::vector<int> agents(a, 0);
+  for (int i = 0; i < a; i++){
+    std::cin >> agents[i];
+  }
+  std::vector<int> shelters(s, 0);
+  for (int i = 0; i < s; i++){
+    std::cin >> shelters[i];
+  }
 
-	std::vector<std::pair<int, std::vector<int>>> distMaps;
-	for (int i = 0; i < a; i++){
-		//Run dijkstra for every agent
-		int startNode = agents[i];
-  		std::vector<int> dist_map(n, -1);
-  		std::vector<vertex_desc> pred_map(n);
-  		boost::dijkstra_shortest_paths(G, startNode, boost::distance_map(
-			  boost::make_iterator_property_map(dist_map.begin(), 
-			  boost::get(boost::vertex_index, G))).predecessor_map(
-				  boost::make_iterator_property_map(pred_map.begin(), 
-				  boost::get(boost::vertex_index, G))));
-		distMaps.push_back(std::make_pair(startNode, dist_map));
-	}
+  std::vector<std::pair<int, std::vector<int>>> distMaps;
+  for (int i = 0; i < a; i++){
+    //Run dijkstra for every agent
+    int startNode = agents[i];
+      std::vector<int> dist_map(n, -1);
+      std::vector<vertex_desc> pred_map(n);
+      boost::dijkstra_shortest_paths(G, startNode, boost::distance_map(
+        boost::make_iterator_property_map(dist_map.begin(), 
+        boost::get(boost::vertex_index, G))).predecessor_map(
+          boost::make_iterator_property_map(pred_map.begin(), 
+          boost::get(boost::vertex_index, G))));
+    distMaps.push_back(std::make_pair(startNode, dist_map));
+  }
 
-	//Do binarysearch on the time needed
-	int l = 0;
-	int r = std::numeric_limits<int>::max()-1;
-	while(l < r){
-		int mid = l + (r-l)/2;
+  //Do binarysearch on the time needed
+  int l = 0;
+  int r = std::numeric_limits<int>::max()-1;
+  while(l < r){
+    int mid = l + (r-l)/2;
 
-		//Build flowgraph, just add edges with time-d <= mid
-		int source = 2*n;
-		int sink = 2*n+1;
-		graph G_flow(2*n+2);
-    	edge_adder adder(G_flow);
-		for (int i = 0; i < a; i++){
-			int curAgent = distMaps[i].first;
-			adder.add_edge(source, curAgent, 1);
-			std::vector<int> curDistMap = distMaps[i].second;
-			for (int j = 0; j < shelters.size(); j++){
-				int curShelter = shelters[j];
-				if(curDistMap[curShelter] <= (mid-d)){
-					adder.add_edge(curAgent, n+curShelter, 1);
-				}
-			}
-		}
+    //Build flowgraph, just add edges with time-d <= mid
+    int source = 3*n;
+    int sink = 3*n+1;
+    graph G_flow(3*n+2);
+      edge_adder adder(G_flow);
+    for (int i = 0; i < a; i++){
+      int curAgent = distMaps[i].first;
+      adder.add_edge(source, curAgent, 1);
+      std::vector<int> curDistMap = distMaps[i].second;
+      for (int j = 0; j < shelters.size(); j++){
+        int curShelter = shelters[j];
+        if(curDistMap[curShelter] <= (mid-d)){
+            adder.add_edge(curAgent, n+curShelter, 1);
+        }
+        if (curDistMap[curShelter] <= (mid-2*d) && c == 2){
+            adder.add_edge(curAgent, 2*n+curShelter, 1);
+        }
+      }
+    }
 
-		for (int i = 0; i < s; i++){
-			int curShelter = shelters[i];
-			adder.add_edge(curShelter+n, sink, c);
-		}
+    for (int i = 0; i < s; i++){
+      int curShelter = shelters[i];
+      adder.add_edge(curShelter+n, sink, 1);
+      adder.add_edge(curShelter+2*n, sink, 1);
+    }
 
-		long flow = boost::push_relabel_max_flow(G_flow, source, sink);
-		if (flow < a){ //Not enought time was provided
-			l = mid+1;
-		} else if (flow == a){
-			r = mid;
-		}
+    long flow = boost::push_relabel_max_flow(G_flow, source, sink);
+    if (flow < a){ //Not enought time was provided
+      l = mid+1;
+    } else if (flow == a){
+      r = mid;
+    }
 
-	}
-	std::cout << r << std::endl;	
-	return;
+  }
+  std::cout << r << std::endl;  
+  return;
 }
 
 int main() {
-	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/user_test.in");
-	std::cin.rdbuf(in.rdbuf());
-
-	int t;
-	std::cin >> t;
-	for (int i = 0; i < t; ++i)
-		testcase();
-	return 0;
+  std::ios_base::sync_with_stdio(false);
+  std::fstream in("./testsets/user_test.in");
+  std::cin.rdbuf(in.rdbuf());
+  
+  int t;
+  std::cin >> t;
+  for (int i = 0; i < t; ++i)
+    testcase();
+  return 0;
 }
