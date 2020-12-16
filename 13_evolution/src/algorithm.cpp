@@ -60,7 +60,11 @@ void testcase() {
 		std::string s; int a; std::cin >> s >> a;
 		int index_s = index_of_spec(species_list, s);
 		int index_save = index_s;
-		while (species_list[index_s].age < a && species_list[index_s].index_predecessor != -1){
+		while (species_list[index_s].age <= a){
+			if (species_list[index_s].index_predecessor == -1){
+				index_save = index_s;
+				break;
+			}
 			index_save = index_s;
 			index_s = species_list[index_s].index_predecessor;
 		}
@@ -72,7 +76,7 @@ void testcase() {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/test1.in");
+	std::fstream in("./testsets/user_test.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
