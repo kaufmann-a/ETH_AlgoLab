@@ -64,8 +64,18 @@ void testcase() {
 		int length = std::get<3>(streets[i]);
 		int nrPeople = std::get<2>(streets[i]);
 		edge_desc e = boost::add_edge(u, v, G).first; weights[e]=std::get<3>(streets[i]);
-		adj_matrix[u][v] = std::make_pair(length, nrPeople);
-		adj_matrix[v][u] = std::make_pair(length, nrPeople);
+		if (adj_matrix[u][v].first != 0){
+			if (adj_matrix[u][v].first > length){
+				adj_matrix[u][v] = std::make_pair(length, nrPeople);
+				adj_matrix[v][u] = std::make_pair(length, nrPeople);
+			} else if (adj_matrix[u][v].first == length){
+				adj_matrix[u][v].second += nrPeople;
+				adj_matrix[v][u].second += nrPeople;
+			}
+		} else {
+			adj_matrix[u][v] = std::make_pair(length, nrPeople);
+			adj_matrix[v][u] = std::make_pair(length, nrPeople);
+		}
 	}
 
 	std::vector<vertex_desc> path;
@@ -84,20 +94,30 @@ void testcase() {
 		int u = pred_map[i];
 		int v = i;
 		int capacity = adj_matrix[u][v].second;
-		adder.add_edge(u, v, capacity);
+		if (capacity != 0){
+			adder.add_edge(u, v, capacity);
+			adder.add_edge(v, u, capacity);
+		}
 		visited[u][v] = true;
+		visited[v][u] = true;
 	}
 
 	//check which add. streets to add to flowgraph
 	for (int i = 0; i < m; i++){
 		int u = std::get<0>(streets[i]);
 		int v = std::get<1>(streets[i]);
-		int lentgth = std::get<3>(streets[i]);
-		int nrPeople = std::get<2>(streets[i]);
+		int lentgth = adj_matrix[u][v].first;
+		int nrPeople = adj_matrix[u][v].second;
 		if (visited[u][v] == false){
 			if (dist_map[u] + lentgth == dist_map[v]){
 				adder.add_edge(u, v, nrPeople);
 			} 
+			visited[u][v] = true;
+		}
+		if (visited[v][u] == false){
+			if (dist_map[v] + lentgth == dist_map[u]){
+				adder.add_edge(v, u, nrPeople);
+			}
 		}
 	}
 
@@ -110,7 +130,7 @@ void testcase() {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
