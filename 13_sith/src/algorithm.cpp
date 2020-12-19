@@ -42,30 +42,31 @@ void testcase() {
 		std::cin >> x >> y;
 		points.emplace_back(K::Point_2(x, y), i);
   	}
-	int counter = 1;
-	std::vector<IPoint>::iterator it = points.begin();
-	it++;
-	int k = 0;
-	while (it != points.end()){
+	int l_ = 0;
+	int r_ = n;
+	//Do binarysearch on k
+	while (l_ < r_){
+		int mid = l_ + (r_ - l_) / 2 + 1;
+
 		// construct triangulation
 		Delaunay t;
-		t.insert(it, points.end());
+		t.insert(points.begin() + mid, points.end());
 		
-		graph G(n-counter);
+		graph G(n-mid);
 		//construct boostgraph
 		for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e){
 			if (t.segment(e).squared_length() <= r*r) {
-				Index i1 = e->first->vertex((e->second+1)%3)->info()-counter;
-    			Index i2 = e->first->vertex((e->second+2)%3)->info()-counter;
+				Index i1 = e->first->vertex((e->second+1)%3)->info()-mid;
+    			Index i2 = e->first->vertex((e->second+2)%3)->info()-mid;
 				boost::add_edge(i1, i2, G);
 			}
 		}
-		std::vector<int> component_map(n-counter);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
+		std::vector<int> component_map(n-mid);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
 		int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G))); 
 	
 		std::vector<std::vector<vertex_desc>> component_vertices(ncc);
 		// Iterate over all vertices
-		for (int i = 0; i < n-counter; ++i){
+		for (int i = 0; i < n-mid; ++i){
 			component_vertices[component_map[i]].push_back(i);
 		}
 		int maxSize = 0;
@@ -74,15 +75,13 @@ void testcase() {
 				maxSize = component_vertices[c_i].size();
 			}
 		}
-		if (maxSize >= counter){
-			k = counter;
+		if (maxSize >= mid){
+			l_ = mid;
 		} else {
-			break;
+			r_ = mid-1;
 		}
-		counter++;
-		it++;
 	}
-	std::cout << k << std::endl;
+	std::cout << l_ << std::endl;
 	return;
 }
 
