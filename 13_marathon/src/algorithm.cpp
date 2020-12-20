@@ -81,42 +81,28 @@ void testcase() {
 	std::vector<vertex_desc> path;
 	std::vector<int>         dist_map(n);
   	std::vector<vertex_desc> pred_map(n);
+	std::vector<int> 		 dist_map_ret(n);
+	std::vector<vertex_desc> pred_map_ret(n);
+
 
 	boost::dijkstra_shortest_paths(G, s, boost::distance_map(boost::make_iterator_property_map(
 		dist_map.begin(), boost::get(boost::vertex_index, G))).predecessor_map(boost::make_iterator_property_map(
 			pred_map.begin(), boost::get(boost::vertex_index, G))));
 
+	boost::dijkstra_shortest_paths(G, f, boost::distance_map(boost::make_iterator_property_map(
+		dist_map_ret.begin(), boost::get(boost::vertex_index, G))).predecessor_map(boost::make_iterator_property_map(
+			pred_map_ret.begin(), boost::get(boost::vertex_index, G))));
+		
+
 	std::vector<std::vector<bool>> visited(n, std::vector<bool>(n));
 
 	graph G_flow(n);
 	edge_adder adder(G_flow);
+	int shortestPath = dist_map[f];
 	for (int i = 0; i < n; i++){
-		int u = pred_map[i];
-		int v = i;
-		int capacity = adj_matrix[u][v].second;
-		if (capacity != 0){
-			adder.add_edge(u, v, capacity);
-			adder.add_edge(v, u, capacity);
-		}
-		visited[u][v] = true;
-		visited[v][u] = true;
-	}
-
-	//check which add. streets to add to flowgraph
-	for (int i = 0; i < m; i++){
-		int u = std::get<0>(streets[i]);
-		int v = std::get<1>(streets[i]);
-		int lentgth = adj_matrix[u][v].first;
-		int nrPeople = adj_matrix[u][v].second;
-		if (visited[u][v] == false){
-			if (dist_map[u] + lentgth == dist_map[v]){
-				adder.add_edge(u, v, nrPeople);
-			} 
-			visited[u][v] = true;
-		}
-		if (visited[v][u] == false){
-			if (dist_map[v] + lentgth == dist_map[u]){
-				adder.add_edge(v, u, nrPeople);
+		for (int j = 0; j < n; j++){
+			if (adj_matrix[i][j].first + dist_map[i] + dist_map_ret[j] == shortestPath){
+				adder.add_edge(i, j, adj_matrix[i][j].second);
 			}
 		}
 	}
