@@ -4,6 +4,7 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include <queue>
 #include <vector>
 #include <fstream>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -30,33 +31,55 @@ std::ostream& operator<<(std::ostream& o, const Edge& e) {
 	return o << std::get<0>(e) << " " << std::get<1>(e) << " " << std::get<2>(e);
 }
 
-int nrFamilies(Delaunay &del, K::FT &givenSquaredDist, int n, int k){
-	graph G(n);
-	//First compute a graph containing all edges of delaunay with squared length >= s
-	for (auto e = del.finite_edges_begin(); e != del.finite_edges_end(); ++e) {
-    	Index i1 = e->first->vertex((e->second+1)%3)->info();
-    	Index i2 = e->first->vertex((e->second+2)%3)->info();
-		if (del.segment(e).squared_length() <= givenSquaredDist){
-			boost::add_edge(i1, i2, G);
-		}
+int nrFamilies(std::vector<std::vector<std::pair<int, long>>> &G, K::FT &givenSquaredDist, int n, int k){
+	std::vector<bool> vis(n, false); 
+	std::vector<int> conn_components; 
+
+	for(int i = 0; i < n; i++){
+		if(vis[i]) continue; 
+		int size = 0; 
+		std::queue<int> Q; 
+		Q.push(i); 
+		while(!Q.empty()){
+			int u = Q.front(); Q.pop();
+			vis[u] = true; 
+			size++; 
+			for(int i = 0; i < G[u].size(); i++){
+				int v = get<0>(G[u][i]);
+				if(!vis[v] && get<1>(G[u][i]) < givenSquaredDist) Q.push(v);
+			}
+	}
+	conn_components.push_back(size); 
+	}
+	
+	int size1 = 0; 
+  	int size2 = 0; 
+  	int size3 = 0; 
+  	int fine = 0; 
+  	for(int i = 0; i < conn_components.size(); i++){
+    	if(conn_components[i] == 1) size1++; 
+    	if(conn_components[i] == 2) size2++; 
+    	if(conn_components[i] == 3) size3++; 
+    	if(conn_components[i] >= k) fine++; 
+  	}
+		if(k == 1) return fine; 
+  		else if(k == 2) return fine + size1 / 2; 
+  		else if(k == 3){
+    	if(size2 <= size1) return fine + size2 + (size1 - size2) / 3; 
+    	else return fine + size1 + (size2 - size1) / 2; 
+  	} else {
+		int match2 = size2/2; 
+		int match31 = std::min(size1, size3); 
+		int rem1 = std::max(0, size1 - size3); 
+		int rem2 = size2%2; 
+		int rem3 = std::max(0, size3-size1); 
+		int extra = 0; 
+		if(rem1 > 1) extra = (rem1 + rem2 * 2) / 4; 
+		else if(rem3) extra += rem2 + (rem3 - rem2) / 2; 
+		// else if(rem3 > 0) extra = (3 * rem3 + 2 * rem2) / 4; 
+		return extra + match2 + match31 + fine; 
   	}
 	
-	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
-	int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G))); 
-	
-	std::vector<std::vector<vertex_desc>> component_vertices(ncc);
-	// Iterate over all vertices
-	for (int i = 0; i < n; ++i)
-		component_vertices[component_map[i]].push_back(i);
-
-	// Iterate over all components
-	int countNrFamilies = 0; //This is the answer of the second question
-	for (int c_i = 0; c_i < ncc; ++c_i){
-		if (component_vertices[c_i].size() >= k){
-			countNrFamilies++;
-		}
-	}
-	return countNrFamilies;
 }
 
 void testcase() {
@@ -87,23 +110,41 @@ void testcase() {
 		  return std::get<2>(e1) <std::get<2>(e2);
 	  });
 
-	int l = 0; int r = edges.size()-1;
-	while (l < r){
-		int mid = l + (r- l) / 2;
-		K::FT curSquaredDist = std::get<2>(edges[mid]);
-		int curNrFamilies = nrFamilies(t, curSquaredDist, n, k);
-		if (curNrFamilies < f){
-			r = mid-1;
-		} else if (curNrFamilies >= f){
-			l = mid;
+	std::vector<std::vector<std::pair<int, long>>> G(n);
+	boost::disjoint_sets_with_storage<> uf(n);
+  	Index n_components = n;
+	std::vector<K::FT> emst_edges;
+  	for (EdgeV::const_iterator e = edges.begin(); e != edges.end(); ++e) {
+		// determine components of endpoints
+		Index c1 = uf.find_set(std::get<0>(*e));
+		Index c2 = uf.find_set(std::get<1>(*e));
+		if (c1 != c2) {
+			// this edge connects two different components => part of the emst
+			uf.link(c1, c2);
+			G[c1].push_back({c2, get<2>(*e)});
+      		G[c2].push_back({c1, get<2>(*e)}); 
+			emst_edges.push_back(std::get<2>(*e));
+			if (--n_components == 1) break;
 		}
+  	}
+	std::sort(emst_edges.begin(), emst_edges.end());
+	int l = 0; int r = emst_edges.size()-1;
+	long res = 0;
+	while (l <= r){
+		int m = (l + r) / 2;
+    	int now = nrFamilies(G, emst_edges[m], n, k);
+    	if(now >= f && m < emst_edges.size() - 1 && nrFamilies(G, emst_edges[m + 1], n, k) < f){ res = emst_edges[m]; break;}  
+   		else if(now >= f && m == emst_edges.size() - 1){ res = emst_edges[m]; break;} 
+    	else if(now >= f) l = m + 1; 
+    	else if(now < f) r = m - 1;
+
 	}
-	long q1 = std::get<2>(edges[l]);
+	
 
 	K::FT squaredDist = s;
-	int q2 = nrFamilies(t, squaredDist, n, k);
+	int q2 = nrFamilies(G, squaredDist, n, k);
 	
-	std::cout << q1 << " " << q2 << std::endl;
+	std::cout << res << " " << q2 << std::endl;
 	return;
 }
 
