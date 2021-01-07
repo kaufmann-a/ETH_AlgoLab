@@ -36,18 +36,33 @@ void testcase() {
 		S[i] = s;
 	}
 
+	//First check for 0 gulps
+	bool zeroGulps = asterixWins(M, M.size(), T, D, 0);
+
 	//Check all subsets for each amount of gulps, stop when solution found
-	bool wins = false;
 	long nrGulps = 0;
-	for (int i = 0; i <= m; i++){
-		wins = asterixWins(M, M.size(), T, D, S[i]);
-		if (wins){
-			nrGulps = i;
-			break;
+	bool onceWon = false;
+	if (zeroGulps){
+		onceWon = true;
+	}
+
+	if (!zeroGulps){
+		bool wins = false;
+		int leftP, rightP; leftP = 0; rightP = m-1;
+		while (leftP <= rightP){
+			int mid = leftP + (rightP - leftP)/2;
+			bool wins = asterixWins(M, M.size(), T, D, S[mid]);
+			if (wins){
+				nrGulps = mid;
+				rightP = mid-1;
+				onceWon = true;
+			} else {
+				leftP = mid+1;
+			}
 		}
 	}
 
-	if (wins){
+	if (onceWon){
 		std::cout << nrGulps << std::endl;
 	} else {
 		std::cout << "Panoramix captured" << std::endl;
@@ -59,7 +74,7 @@ void testcase() {
 int main() {
 	std::ios_base::sync_with_stdio(false);
 
-	std::fstream in("./testsets/test1.in");
+	std::fstream in("./testsets/test2.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
