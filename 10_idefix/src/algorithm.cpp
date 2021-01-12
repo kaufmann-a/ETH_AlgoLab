@@ -31,6 +31,10 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS>					
 typedef boost::graph_traits<graph>::vertex_descriptor		vertex_desc;		// Vertex Descriptor: with vecS vertex list, this is really just an int in the range [0, num_vertices(G)).	
 typedef boost::graph_traits<graph>::edge_iterator		edge_it;		// to iterate over all edges
 
+bool mySort (std::pair<int, long> &bone1, std::pair<int, long> &bone2){
+	return bone1.second < bone2.second;
+}
+
 
 int nrBones (Delaunay t, long n, long s, std::vector<std::pair<int, long>> &bones_locations){
 	// For every edge whose distance is smaller s, we add an edge to a new bgl graph
@@ -90,7 +94,7 @@ void testcase() {
 	}
 	Delaunay t;
 	t.insert(points.begin(), points.end());
-
+	std::vector<long> possible_distances_q;
 	// For every edge whose distance is smaller s, we add an edge to a new bgl graph
 	graph G(n);
 	for (auto e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
@@ -102,12 +106,13 @@ void testcase() {
 		if (CGAL::squared_distance(p1, p2) <= s){
 			boost::add_edge(i1, i2, G);
 		}
+		possible_distances_q.push_back(t.segment(e).squared_length());
 	}
 
 	// We run connected components on the graph, in the components map we will have the nr. of the component, node i belongs to
 	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
 	int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G)));
-
+	
 	std::vector<std::pair<int, long>> bones_locations; //Bone i is closest to tree j with dist k: bones_locations[i]=(j,k)
 	std::vector<int> trees_with_bones(n, 0); //Tree i has j bones with smaller r: trees_with_bones[i] = j
 	for (int i = 0; i < m; i++){
@@ -117,7 +122,8 @@ void testcase() {
 		auto nearestVertex = t.nearest_vertex(curBone);
 		Index node_nr = nearestVertex->info();
 		K::Point_2 pt = nearestVertex->point();
-		auto dista = CGAL::to_double(CGAL::squared_distance(curBone, pt));
+		possible_distances_q.push_back(4*CGAL::squared_distance(curBone, pt));
+		//auto dista = CGAL::to_double(CGAL::squared_distance(curBone, pt));
 		bones_locations.push_back(std::make_pair(node_nr, CGAL::squared_distance(curBone, pt)));
 		long radius = s/4;
 		if (CGAL::squared_distance(curBone, pt) <= radius){
@@ -139,27 +145,29 @@ void testcase() {
 		}
 	}
 
+	std::sort(possible_distances_q.begin(), possible_distances_q.end());
 
 	//Do binsearch on the radius
-	long left = 0; long right = std::pow(2, 51);
+	long left = 0; long right = possible_distances_q.size()-1;
 	while (left < right){
-		long middle = left + (right-left)/2;
+		long middle_index = left+(right-left)/2;
+		long middle = possible_distances_q[middle_index];
 
 		int best = nrBones(t, n, middle, bones_locations);
 		if (best >= k){
-			right = middle;
+			right = middle_index;
 		} else {
-			left = middle+1;
+			left = middle_index+1;
 		}
 
 	}
 
-	std::cout << curBestComponent << " " << right << std::endl;
+	std::cout << curBestComponent << " " << possible_distances_q[right] << std::endl;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
