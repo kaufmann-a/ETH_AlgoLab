@@ -8,87 +8,153 @@
 #include <fstream>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/boost/graph/graph_traits_Delaunay_triangulation_2.h>
+#include <CGAL/Triangulation_vertex_base_with_info_2.h>
+#include <CGAL/Triangulation_face_base_2.h>
+#include <boost/pending/disjoint_sets.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/connected_components.hpp>
 
+// Epic kernel is enough, no constructions needed, provided the squared distance
+// fits into a double (!)
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
-typedef Triangulation::Finite_edges_iterator  Edge_iterator;
-typedef Triangulation::Finite_vertices_iterator Vertex_iterator;
-typedef Triangulation::Finite_vertex_handles::iterator Vertex_handles_iterator;
-typedef std::map<Triangulation::Point_2, double> Dist_map;
+// we want to store an index with each vertex
+typedef std::size_t                                            Index;
+typedef CGAL::Triangulation_vertex_base_with_info_2<Index,K>   Vb;
+typedef CGAL::Triangulation_face_base_2<K>                     Fb;
+typedef CGAL::Triangulation_data_structure_2<Vb,Fb>            Tds;
+typedef CGAL::Delaunay_triangulation_2<K,Tds>                  Delaunay;
 
-long dfs (std::map<Triangulation::Point_2, bool> visited_map, const Triangulation &triang, const Triangulation::Vertex_handle &cur_v_handle, std::map<Triangulation::Vertex_handle, long> &nr_bones_at_tree, long s){
-	if (visited_map[cur_v_handle->point()]){
-		return 0;
+typedef std::tuple<Index,Index,K::FT> Edge;
+typedef std::vector<Edge> EdgeV;
+
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS>					graph;
+typedef boost::graph_traits<graph>::vertex_descriptor		vertex_desc;		// Vertex Descriptor: with vecS vertex list, this is really just an int in the range [0, num_vertices(G)).	
+typedef boost::graph_traits<graph>::edge_iterator		edge_it;		// to iterate over all edges
+
+
+int nrBones (Delaunay t, long n, long s, std::vector<std::pair<int, long>> &bones_locations){
+	// For every edge whose distance is smaller s, we add an edge to a new bgl graph
+	graph G(n);
+	for (auto e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
+		Index i1 = e->first->vertex((e->second+1)%3)->info();
+		Index i2 = e->first->vertex((e->second+2)%3)->info();
+		K::Point_2 p1 = e->first->vertex((e->second+1)%3)->point();
+		K::Point_2 p2 = e->first->vertex((e->second+2)%3)->point();
+		auto dist = CGAL::to_double(CGAL::squared_distance(p1, p2));
+		if (CGAL::squared_distance(p1, p2) <= s){
+			boost::add_edge(i1, i2, G);
+		}
 	}
 
-	visited_map[cur_v_handle->point()] = true;
-	long nrBonesCurTree = nr_bones_at_tree[cur_v_handle];
-	
-	Triangulation::Edge_circulator c = triang.incident_edges(cur_v_handle);
-	do {
-		std::cout << "hallo" << std::endl;
-		if (!triang.is_infinite(c)){
-			auto p1 = c->first;
-			auto p2 = c->second;
-			// if (CGAL::squared_distance(, p2) <= s){
-			// 	nrBonesCurTree += dfs(visited_map, triang, p2, nr_bones_at_tree, s);
-			// }
+	// We run connected components on the graph, in the components map we will have the nr. of the component, node i belongs to
+	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
+	int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G)));
+
+	std::vector<int> trees_with_bones(n, 0); //Tree i has j bones with smaller r: trees_with_bones[i] = j
+	for (int i = 0; i < bones_locations.size(); i++){
+		Index node_nr = bones_locations[i].first;
+		auto dist = bones_locations[i].second;
+		long radius = s/4;
+		if (dist <= radius){
+			trees_with_bones[node_nr] += 1;
 		}
-	} while (++c != triang.incident_edges(cur_v_handle));
-	return nrBonesCurTree;
+	}
+
+	std::vector<int> component_nr_bones(ncc, 0);
+	for(int i = 0; i < n; i++){
+		int curComponent = component_map[i];
+		int nrBonesAt_tree_i = trees_with_bones[i];
+		component_nr_bones[curComponent] += nrBonesAt_tree_i;
+	}
+
+	int curBestComponent = 0;
+	for (int i = 0; i < ncc; i++){
+		if (component_nr_bones[i] > curBestComponent){
+			curBestComponent = component_nr_bones[i];
+		}
+	}
+	return curBestComponent;
 }
-
-
-
 
 void testcase() {
 	long n, m, s, k; std::cin >> n >> m >> s >> k;
 
-	//read all trees
-	std::vector<K::Point_2> trees;
-	trees.reserve(n);
-	for (int i = 0; i < n; i++){
-		long x, y; std::cin >> x >> y;
-		trees.push_back(K::Point_2(x, y));
+	//Read in all oak trees and build delaunay triangulation
+	typedef std::pair<K::Point_2,Index> IPoint;
+	std::vector<IPoint> points;
+	points.reserve(n);
+	for (Index i = 0; i < n; ++i) {
+		int x, y;
+		std::cin >> x >> y;
+		points.emplace_back(K::Point_2(x, y), i);
 	}
-	Triangulation triang;
-	triang.insert(trees.begin(), trees.end());
+	Delaunay t;
+	t.insert(points.begin(), points.end());
 
-	//read all bones
-	std::vector<K::Point_2> bones;
-	bones.reserve(m);
-	for (int i = 0; i < m; i++){
-		long x, y; std::cin >> x >> y;
-		bones.push_back(K::Point_2(x, y));
-	}
-	
-	std::map<Triangulation::Vertex_handle, long> nr_bones_at_tree;
-	double radius = s/4;
-	for (int i = 0; i < m; i++){
-		Triangulation::Vertex_handle nearestVertex = triang.nearest_vertex(bones[i]);
-		double squaredDist = CGAL::squared_distance(nearestVertex->point(), bones[i]);
-		if (squaredDist <= radius){
-			std::map<Triangulation::Vertex_handle, long>::iterator it = nr_bones_at_tree.find(nearestVertex);
-			if (it != nr_bones_at_tree.end()) {
-				nr_bones_at_tree[nearestVertex] += 1;
-			} else {
-				nr_bones_at_tree.insert(std::make_pair(nearestVertex, 1));
-			}
+	// For every edge whose distance is smaller s, we add an edge to a new bgl graph
+	graph G(n);
+	for (auto e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
+		Index i1 = e->first->vertex((e->second+1)%3)->info();
+		Index i2 = e->first->vertex((e->second+2)%3)->info();
+		K::Point_2 p1 = e->first->vertex((e->second+1)%3)->point();
+		K::Point_2 p2 = e->first->vertex((e->second+2)%3)->point();
+		auto dist = CGAL::to_double(CGAL::squared_distance(p1, p2));
+		if (CGAL::squared_distance(p1, p2) <= s){
+			boost::add_edge(i1, i2, G);
 		}
 	}
 
-	//Do dfs over all verteces
-	std::map<Triangulation::Point_2, bool> visited_map;
-	for (Vertex_iterator v_it = triang.finite_vertices_begin(); v_it != triang.finite_vertices_end(); v_it++){
-		visited_map.insert(std::make_pair(v_it->point(), false));
-	}
-	int nr_Bones = 0;
-	for (Vertex_iterator v_it = triang.finite_vertices_begin(); v_it != triang.finite_vertices_end(); v_it++){
-		long curNrBones = dfs(visited_map, triang, v_it, nr_bones_at_tree, s);
+	// We run connected components on the graph, in the components map we will have the nr. of the component, node i belongs to
+	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
+	int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G)));
+
+	std::vector<std::pair<int, long>> bones_locations; //Bone i is closest to tree j with dist k: bones_locations[i]=(j,k)
+	std::vector<int> trees_with_bones(n, 0); //Tree i has j bones with smaller r: trees_with_bones[i] = j
+	for (int i = 0; i < m; i++){
+		int x, y; std::cin >> x >> y;
+		K::Point_2 curBone = K::Point_2(x, y);
+
+		auto nearestVertex = t.nearest_vertex(curBone);
+		Index node_nr = nearestVertex->info();
+		K::Point_2 pt = nearestVertex->point();
+		auto dista = CGAL::to_double(CGAL::squared_distance(curBone, pt));
+		bones_locations.push_back(std::make_pair(node_nr, CGAL::squared_distance(curBone, pt)));
+		long radius = s/4;
+		if (CGAL::squared_distance(curBone, pt) <= radius){
+			trees_with_bones[node_nr] += 1;
+		}
 	}
 
-	return;
+	std::vector<int> component_nr_bones(ncc, 0);
+	for(int i = 0; i < n; i++){
+		int curComponent = component_map[i];
+		int nrBonesAt_tree_i = trees_with_bones[i];
+		component_nr_bones[curComponent] += nrBonesAt_tree_i;
+	}
+
+	int curBestComponent = 0;
+	for (int i = 0; i < ncc; i++){
+		if (component_nr_bones[i] > curBestComponent){
+			curBestComponent = component_nr_bones[i];
+		}
+	}
+
+
+	//Do binsearch on the radius
+	long left = 0; long right = std::pow(2, 51);
+	while (left < right){
+		long middle = left + (right-left)/2;
+
+		int best = nrBones(t, n, middle, bones_locations);
+		if (best >= k){
+			right = middle;
+		} else {
+			left = middle+1;
+		}
+
+	}
+
+	std::cout << curBestComponent << " " << right << std::endl;
 }
 
 int main() {
