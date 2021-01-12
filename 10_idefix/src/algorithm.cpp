@@ -36,48 +36,42 @@ bool mySort (std::pair<int, long> &bone1, std::pair<int, long> &bone2){
 }
 
 
-int nrBones (Delaunay t, long n, long s, std::vector<std::pair<int, long>> &bones_locations){
-	// For every edge whose distance is smaller s, we add an edge to a new bgl graph
-	graph G(n);
-	for (auto e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
-		Index i1 = e->first->vertex((e->second+1)%3)->info();
-		Index i2 = e->first->vertex((e->second+2)%3)->info();
-		K::Point_2 p1 = e->first->vertex((e->second+1)%3)->point();
-		K::Point_2 p2 = e->first->vertex((e->second+2)%3)->point();
-		auto dist = CGAL::to_double(CGAL::squared_distance(p1, p2));
-		if (CGAL::squared_distance(p1, p2) <= s){
-			boost::add_edge(i1, i2, G);
+int nrBones (Delaunay t, long n, long s, std::vector<std::pair<int, long>> &bones_locations, EdgeV &edges){
+	// reachable bones per tree
+    std::vector<int> bones_count(n);
+    for (auto &bone : bones_locations)
+    {
+        if (bone.second * 4 <= K::FT(s))
+        {
+            bones_count[bone.first]++;
+        }
+    }
+	
+	boost::disjoint_sets_with_storage<> uf(n);
+	Index n_components = n;
+	// ... and process edges in order of increasing length
+	for (EdgeV::const_iterator e = edges.begin(); e != edges.end(); ++e) {
+		// determine components of endpoints
+		Index c1 = uf.find_set(std::get<0>(*e));
+		Index c2 = uf.find_set(std::get<1>(*e));
+		if (c1 != c2) {
+			// this edge connects two different components => part of the emst
+			uf.link(c1, c2);
+			if (std::get<2>(*e) <= s){
+				// edge is not to long -> combine the bone count of both components
+                int combined_bone_count = bones_count[c1] + bones_count[c2];
+                bones_count[c1] = combined_bone_count;
+                bones_count[c2] = combined_bone_count;
+			}
+			if (--n_components == 1) break;
 		}
 	}
-
-	// We run connected components on the graph, in the components map we will have the nr. of the component, node i belongs to
-	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
-	int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G)));
-
-	std::vector<int> trees_with_bones(n, 0); //Tree i has j bones with smaller r: trees_with_bones[i] = j
-	for (int i = 0; i < bones_locations.size(); i++){
-		Index node_nr = bones_locations[i].first;
-		auto dist = bones_locations[i].second;
-		long radius = s/4;
-		if (dist <= radius){
-			trees_with_bones[node_nr] += 1;
-		}
-	}
-
-	std::vector<int> component_nr_bones(ncc, 0);
-	for(int i = 0; i < n; i++){
-		int curComponent = component_map[i];
-		int nrBonesAt_tree_i = trees_with_bones[i];
-		component_nr_bones[curComponent] += nrBonesAt_tree_i;
-	}
-
-	int curBestComponent = 0;
-	for (int i = 0; i < ncc; i++){
-		if (component_nr_bones[i] > curBestComponent){
-			curBestComponent = component_nr_bones[i];
-		}
-	}
-	return curBestComponent;
+	size_t max_count = 0;
+    for (size_t count : bones_count)
+    {
+        max_count = std::max(max_count, count);
+    }
+	return max_count;
 }
 
 void testcase() {
@@ -94,25 +88,29 @@ void testcase() {
 	}
 	Delaunay t;
 	t.insert(points.begin(), points.end());
+
+	EdgeV edges;
 	std::vector<long> possible_distances_q;
-	// For every edge whose distance is smaller s, we add an edge to a new bgl graph
 	graph G(n);
+	edges.reserve(3*n); // there can be no more in a planar graph
 	for (auto e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
 		Index i1 = e->first->vertex((e->second+1)%3)->info();
 		Index i2 = e->first->vertex((e->second+2)%3)->info();
 		K::Point_2 p1 = e->first->vertex((e->second+1)%3)->point();
 		K::Point_2 p2 = e->first->vertex((e->second+2)%3)->point();
-		auto dist = CGAL::to_double(CGAL::squared_distance(p1, p2));
+		// ensure smaller index comes first
+		if (i1 > i2) std::swap(i1, i2);
+		edges.emplace_back(i1, i2, t.segment(e).squared_length());
 		if (CGAL::squared_distance(p1, p2) <= s){
 			boost::add_edge(i1, i2, G);
 		}
 		possible_distances_q.push_back(t.segment(e).squared_length());
 	}
+	std::sort(edges.begin(), edges.end(),
+		[](const Edge& e1, const Edge& e2) -> bool {
+			return std::get<2>(e1) < std::get<2>(e2);
+			});
 
-	// We run connected components on the graph, in the components map we will have the nr. of the component, node i belongs to
-	std::vector<int> component_map(n);	// We MUST use such a vector as an Exterior Property Map: Vertex -> Component
-	int ncc = boost::connected_components(G, boost::make_iterator_property_map(component_map.begin(), boost::get(boost::vertex_index, G)));
-	
 	std::vector<std::pair<int, long>> bones_locations; //Bone i is closest to tree j with dist k: bones_locations[i]=(j,k)
 	std::vector<int> trees_with_bones(n, 0); //Tree i has j bones with smaller r: trees_with_bones[i] = j
 	for (int i = 0; i < m; i++){
@@ -131,19 +129,41 @@ void testcase() {
 		}
 	}
 
-	std::vector<int> component_nr_bones(ncc, 0);
-	for(int i = 0; i < n; i++){
-		int curComponent = component_map[i];
-		int nrBonesAt_tree_i = trees_with_bones[i];
-		component_nr_bones[curComponent] += nrBonesAt_tree_i;
-	}
-
-	int curBestComponent = 0;
-	for (int i = 0; i < ncc; i++){
-		if (component_nr_bones[i] > curBestComponent){
-			curBestComponent = component_nr_bones[i];
+	
+	// reachable bones per tree
+    std::vector<int> bones_count(n);
+    for (auto &bone : bones_locations)
+    {
+        if (bone.second * 4 <= K::FT(s))
+        {
+            bones_count[bone.first]++;
+        }
+    }
+	
+	boost::disjoint_sets_with_storage<> uf(n);
+	Index n_components = n;
+	// ... and process edges in order of increasing length
+	for (EdgeV::const_iterator e = edges.begin(); e != edges.end(); ++e) {
+		// determine components of endpoints
+		Index c1 = uf.find_set(std::get<0>(*e));
+		Index c2 = uf.find_set(std::get<1>(*e));
+		if (c1 != c2) {
+			// this edge connects two different components => part of the emst
+			uf.link(c1, c2);
+			if (std::get<2>(*e) <= s){
+				// edge is not to long -> combine the bone count of both components
+                int combined_bone_count = bones_count[c1] + bones_count[c2];
+                bones_count[c1] = combined_bone_count;
+                bones_count[c2] = combined_bone_count;
+			}
+			if (--n_components == 1) break;
 		}
 	}
+	size_t max_count = 0;
+    for (size_t count : bones_count)
+    {
+        max_count = std::max(max_count, count);
+    }
 
 	std::sort(possible_distances_q.begin(), possible_distances_q.end());
 
@@ -153,7 +173,7 @@ void testcase() {
 		long middle_index = left+(right-left)/2;
 		long middle = possible_distances_q[middle_index];
 
-		int best = nrBones(t, n, middle, bones_locations);
+		int best = nrBones(t, n, middle, bones_locations, edges);
 		if (best >= k){
 			right = middle_index;
 		} else {
@@ -162,7 +182,7 @@ void testcase() {
 
 	}
 
-	std::cout << curBestComponent << " " << possible_distances_q[right] << std::endl;
+	std::cout << max_count << " " << possible_distances_q[right] << std::endl;
 }
 
 int main() {
