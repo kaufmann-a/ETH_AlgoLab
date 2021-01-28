@@ -35,8 +35,8 @@ void testcase() {
 			b = -b;
 			c = -c;
 		}
-		double res_rad = std::sqrt(a*a+b*b)/ v;
-		lp.set_a(X, i, a/v); lp.set_a(Y, i, b/v); lp.set_a(R, i, res_rad); lp.set_b(i, -c);
+		double res_rad = std::sqrt(a*a+b*b)*v;
+		lp.set_a(X, i, a); lp.set_a(Y, i, b); lp.set_a(R, i, res_rad); lp.set_b(i, -c);
 	}
 	lp.set_c(R, -1);
 	lp.set_l(R, true, 0);
@@ -47,10 +47,7 @@ void testcase() {
 		std::cout << (std::floor(sol)) << std::endl;
 	} else if(s.is_infeasible()){
 		std::cout << "impossible" << std::endl;
-	} else if (s.is_unbounded()){
-		std::cout << "impossible" << std::endl;
 	}
-
 
 	return;
 }
