@@ -20,7 +20,7 @@ bool sortFriends(const int &friend1, const int &friend2){
 }
 
 void testcase() {
-	int n, m; std::cin >> n >> m;
+  int n, m; std::cin >> n >> m;
 
 	std::vector<int> friends(n, 0);
 	for (int i = 0; i < n; i++){
@@ -70,13 +70,11 @@ void testcase() {
 }
 
 int main() {
-	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/test1.in");
-	std::cin.rdbuf(in.rdbuf());
+  std::ios_base::sync_with_stdio(false);
 
-	int t;
-	std::cin >> t;
-	for (int i = 0; i < t; ++i)
-		testcase();
-	return 0;
+  int t;
+  std::cin >> t;
+  for (int i = 0; i < t; ++i)
+    testcase();
+  return 0;
 }
