@@ -8,53 +8,65 @@
 #include <fstream>
 #include <set>
 
+
+struct mysorter{
+	bool operator() (const int &i1, const int &i2){
+		return i1 < i2;
+	}
+};
+
+bool sortFriends(const int &friend1, const int &friend2){
+	return friend1 > friend2;
+}
+
 void testcase() {
 	int n, m; std::cin >> n >> m;
 
-	std::vector<int> friends(n);
-	std::multiset<int> boxes;
-
+	std::vector<int> friends(n, 0);
 	for (int i = 0; i < n; i++){
 		std::cin >> friends[i];
 	}
-	for (int i = 0; i < m; i++){
-		int box; std::cin >> box;
-		boxes.insert(box);
-	}
-	std::sort(friends.begin(), friends.end());
-	std::multiset<int>::iterator end = boxes.end(); end--;
-	if (friends[n-1] < *end){
-		std::cout << "impossible" << std::endl;
-	} else {
-		int time = 0;
-		while(boxes.size() > 0){
-			for(int friend_nr = n-1; friend_nr >= 0; friend_nr--){
-				std::multiset<int>::iterator it = boxes.begin();
-			
-				if (*it <= friends[friend_nr]){
-					std::multiset<int>::iterator endd = boxes.end();
-					endd--;
-					if (*endd > friends[friend_nr]){
-						std::multiset<int>::iterator element = boxes.find(*boxes.upper_bound(friends[friend_nr]));
-						element--;
-						boxes.erase(element);
-					} else {
-						std::multiset<int>::iterator element = boxes.end();
-						element--;
-						boxes.erase(element);
-					}
-					if (boxes.empty()){
-						break;
-					}
-				} else {
-					break;
-				}
 
-			}
-			time += 3;
-		}
-		std::cout << time-1 << std::endl;
+	std::sort(friends.begin(), friends.end(), sortFriends);
+
+	std::multiset<int, mysorter> boxes;
+	for (int i = 0; i < m; i++){
+		int w; std::cin >> w;
+		boxes.insert(w);
 	}
+
+	//First check if strongest friend can lift heaviest box - only case in which we output impossible
+	bool impossible = false;
+	if (friends[0] < *boxes.rbegin()){
+		impossible = true;
+	}
+
+	int curTime = 0;
+	if (!impossible){
+		while(!boxes.empty()){
+			for (uint i = 0; i < friends.size(); i++){
+				auto pointerToBox = boxes.upper_bound(friends[i]);
+				if (boxes.empty()){ //We finnished all boxes
+					break;
+				} else if (pointerToBox == boxes.begin()){ //Friend is to weak to lift the box
+					break;
+				} else {
+					pointerToBox--;
+					boxes.erase(pointerToBox);
+				} 
+			}
+			curTime+=3;
+		}
+		curTime -= 1;
+	}
+
+	if (!impossible){
+		std::cout << curTime << std::endl;
+	} else {
+		std::cout << "impossible" << std::endl;
+	}
+
+	return;
 }
 
 int main() {
