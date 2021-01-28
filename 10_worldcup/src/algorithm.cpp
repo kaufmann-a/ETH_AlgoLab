@@ -99,9 +99,7 @@ void testcase(){
     return;
 }
 
-
-
-int main(int argc, char const *argv[]) {
+int main() {
     std::ios_base::sync_with_stdio(false);
     std::fstream in("./testsets/test1.in");
     std::cin.rdbuf(in.rdbuf());
