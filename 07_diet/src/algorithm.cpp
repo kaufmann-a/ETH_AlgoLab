@@ -21,15 +21,10 @@ typedef CGAL::Quadratic_program_solution<ET> Solution;
 void testcase(int n, int m) {
 	Program lp (CGAL::SMALLER, true, 0, false, 0);
 
-	//Set lower and upperbound for each nutrient
-	//std::vector<int> lowerBounds(n, 0);
-	//std::vector<int> upperBounds(n, 0);
 	for (IT i = 0; i < n; i++){
 		IT min, max; std::cin >> min >> max;
 		lp.set_b(i, -min);
 		lp.set_b(n+i, max);
-		//lowerBounds[i] = min;
-		//upperBounds[i] = max;
 	}
 
 	//Loop over all different meals, each meal is one dimension in the lp
@@ -44,30 +39,8 @@ void testcase(int n, int m) {
 			lp.set_a(j, n+i, nutri);
 		}
 	}
-	lp.set_c0(0);
+	//lp.set_c0(0);
 
-
-	// double minCost = std::numeric_limits<double>::max();
-	// for (int j = 0; j < m; j++){
-	// 	IT price; std::cin >> price; lp.set_c0(price);
-	// 	for (int i = 0; i < n; i++){
-	// 		IT nutritient; std::cin >> nutritient;
-	// 		lp.set_c(i, nutritient);
-	// 	}
-	// 	Solution s = CGAL::solve_linear_program(lp, ET());
-	// 	if (s.is_optimal()){
-	// 		double cost = CGAL::to_double(s.objective_value());
-	// 		if (cost < minCost){
-	// 			minCost = cost;
-	// 		}
-	// 		//std::cout << std::floor(cost) << std::endl;
-	// 	}
-	// }
-
-	//Add objective function
-	// for (int i = 0; i < n; i++){
-	// 	lp.set_c(i, 1);
-	// }
 
 	Solution s = CGAL::solve_linear_program(lp, ET());
 	if (s.is_optimal()){
