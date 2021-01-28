@@ -7,6 +7,10 @@
 #include <queue>
 #include <algorithm>
 #include <fstream>
+#include <functional>
+#include <queue>
+#include <vector>
+#include <iostream>
 
 typedef CGAL::Exact_predicates_exact_constructions_kernel K;
 typedef CGAL::Triangulation_vertex_base_2<K> Vb;
