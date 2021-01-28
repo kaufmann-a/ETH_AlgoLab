@@ -40,7 +40,7 @@ void testcase() {
 	//dim1: represents ratio total left to toal right moves. for dim1=12 this means equal amount of left and right, for dim1<12, more left, for dim1>12 more right
 	//dim2 set: here we store different possible dp_entry, per dp_entry always the one with highest excitement is kept
 	//tuple: <0>=left_queue, <1>=right_queue <2>=total excitement
-	int dim2 = 25;
+	int dim2 = 23;
 	std::vector<std::vector<std::map<std::pair<int, int>, long>>> dp(n+1, std::vector<std::map<std::pair<int, int>, long>>(dim2));
 
 	//init dp
