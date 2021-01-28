@@ -49,12 +49,12 @@ void testcase() {
 	if (!zeroGulps){
 		bool wins = false;
 		int leftP, rightP; leftP = 0; rightP = m-1;
-		while (leftP <= rightP){
+		while (leftP < rightP){
 			int mid = leftP + (rightP - leftP)/2;
 			bool wins = asterixWins(M, M.size(), T, D, S[mid]);
 			if (wins){
 				nrGulps = mid;
-				rightP = mid-1;
+				rightP = mid;
 				onceWon = true;
 			} else {
 				leftP = mid+1;
