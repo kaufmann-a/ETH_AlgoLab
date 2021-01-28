@@ -100,7 +100,7 @@ void testcase() {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/sample.in");
+	std::fstream in("./testsets/test3.in");
 	std::cin.rdbuf(in.rdbuf());
 
 	int t;
