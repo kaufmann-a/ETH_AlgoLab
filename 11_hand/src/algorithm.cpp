@@ -48,8 +48,8 @@ int nrFamilies(std::vector<std::vector<std::pair<int, long>>> &G, K::FT &givenSq
 				int v = get<0>(G[u][i]);
 				if(!vis[v] && get<1>(G[u][i]) < givenSquaredDist) Q.push(v);
 			}
-	}
-	conn_components.push_back(size); 
+		}
+		conn_components.push_back(size); 
 	}
 	
 	int size1 = 0; 
@@ -62,9 +62,9 @@ int nrFamilies(std::vector<std::vector<std::pair<int, long>>> &G, K::FT &givenSq
     	if(conn_components[i] == 3) size3++; 
     	if(conn_components[i] >= k) fine++; 
   	}
-		if(k == 1) return fine; 
-  		else if(k == 2) return fine + size1 / 2; 
-  		else if(k == 3){
+	if(k == 1) return fine; 
+  	else if(k == 2) return fine + size1 / 2; 
+  	else if(k == 3){
     	if(size2 <= size1) return fine + size2 + (size1 - size2) / 3; 
     	else return fine + size1 + (size2 - size1) / 2; 
   	} else {
@@ -75,7 +75,7 @@ int nrFamilies(std::vector<std::vector<std::pair<int, long>>> &G, K::FT &givenSq
 		int rem3 = std::max(0, size3-size1); 
 		int extra = 0; 
 		if(rem1 > 1) extra = (rem1 + rem2 * 2) / 4; 
-		else if(rem3) extra += rem2 + (rem3 - rem2) / 2; 
+		else if(rem3 > 0) extra = (rem2 + rem3) / 2; 
 		// else if(rem3 > 0) extra = (3 * rem3 + 2 * rem2) / 4; 
 		return extra + match2 + match31 + fine; 
   	}
