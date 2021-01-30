@@ -13,10 +13,9 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel EK;
 int UP = 1; int DOWN = -1;
 
 struct Biker{
-
 	int index = 0;
 	long y_start_pos = 0;
-	int up_down = 0; //-1 = down, 1 = up
+	int up_down = 0;
 	EK::FT slope = 0;
 
 	Biker(int ind, long stps, int ud, EK::FT sl) : index(ind), y_start_pos(stps), up_down(ud), slope(sl){};
@@ -36,7 +35,6 @@ void testcase() {
 	std::vector<Biker> bikers;
 	for (int i = 0; i < n; i++){
 		long y0, x1, y1; std::cin >> y0 >> x1 >> y1;
-
 		int up_down = 0;
 		//up_down:
 		if (y0 <= y1){
@@ -55,11 +53,7 @@ void testcase() {
 	std::sort(bikers.begin(), bikers.end(), bikerSort);
 
 	std::vector<Biker> sunriseBikers;
-
 	for (int i = 0; i < n; i++){
-		//First check: is sunriseBikers array empty, if so just add the current biker
-
-
 		Biker curBiker = bikers[i];
 		bool curBikerDone = false;
 		while (!curBikerDone){
