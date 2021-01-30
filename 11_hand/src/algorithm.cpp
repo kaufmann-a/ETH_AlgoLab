@@ -4,7 +4,6 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
-#include <queue>
 #include <vector>
 #include <fstream>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -12,90 +11,98 @@
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/Triangulation_face_base_2.h>
 #include <boost/pending/disjoint_sets.hpp>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/connected_components.hpp>
 
+// Epic kernel is enough, no constructions needed, provided the squared distance
+// fits into a double (!)
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+// we want to store an index with each vertex
 typedef std::size_t                                            Index;
 typedef CGAL::Triangulation_vertex_base_with_info_2<Index,K>   Vb;
 typedef CGAL::Triangulation_face_base_2<K>                     Fb;
 typedef CGAL::Triangulation_data_structure_2<Vb,Fb>            Tds;
 typedef CGAL::Delaunay_triangulation_2<K,Tds>                  Delaunay;
-typedef std::tuple<Index,Index,K::FT> 						   Edge;
-typedef std::vector<Edge> 									   EdgeV;
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS>		graph;
-typedef boost::graph_traits<graph>::vertex_descriptor		   vertex_desc;
-typedef boost::graph_traits<graph>::edge_iterator			   edge_it;
 
-std::ostream& operator<<(std::ostream& o, const Edge& e) {
-	return o << std::get<0>(e) << " " << std::get<1>(e) << " " << std::get<2>(e);
+typedef std::tuple<Index,Index,K::FT> Edge;
+typedef std::vector<Edge> EdgeV;
+
+bool componentSort(const int &comp1, const int &comp2){
+	return comp1 > comp2;
 }
 
-int nrFamilies(std::vector<std::vector<std::pair<int, long>>> &G, K::FT &givenSquaredDist, int n, int k){
-	std::vector<bool> vis(n, false); 
-	std::vector<int> conn_components; 
+int q2(const EdgeV &edges, int k, long s, int n){
 
-	for(int i = 0; i < n; i++){
-		if(vis[i]) continue; 
-		int size = 0; 
-		std::queue<int> Q; 
-		Q.push(i); 
-		while(!Q.empty()){
-			int u = Q.front(); Q.pop();
-			vis[u] = true; 
-			size++; 
-			for(int i = 0; i < G[u].size(); i++){
-				int v = get<0>(G[u][i]);
-				if(!vis[v] && get<1>(G[u][i]) < givenSquaredDist) Q.push(v);
-			}
+	std::vector<int> components(n, 1); //Initialize all components with size 1
+
+	boost::disjoint_sets_with_storage<> uf(n);
+  	Index n_components = n;
+  	// ... and process edges in order of increasing length
+  	for (EdgeV::const_iterator e = edges.begin(); e != edges.end(); ++e) {
+		
+		//First check if cur edge-size to large already
+		if (std::get<2>(*e) >= s){
+			break;
 		}
-		conn_components.push_back(size); 
+		// determine components of endpoints
+		Index c1 = uf.find_set(std::get<0>(*e));
+		Index c2 = uf.find_set(std::get<1>(*e));
+		if (c1 != c2) {
+			// this edge connects two different components => part of the emst
+			uf.link(c1, c2);
+
+			//Find name of new component
+			int parent = uf.find_set(c1);
+			if(parent == c1){
+				components[parent] += components[c2];
+				components[c2] = 0;
+			} else if (parent == c2){
+				components[parent] += components[c1];
+				components[c1] = 0;
+			}
+			if (--n_components == 1) break;
+		}
+  	}
+
+	//We know nr of components is n_components, we sort components with largest components on top
+	std::sort(components.begin(), components.end(), componentSort);
+
+	//get nr. families
+	int counter = 0;
+	int l = 0; int r = n_components-1;
+	while (l <= r){
+		//First process all components larger k
+		while (components[l] >= k && l <= r){
+			counter++;
+			l++;
+		}
+
+		if (l == r){
+			break;
+		}
+
+		while(components[l] < k && r > l){
+			components[l] += components[r];
+			r--;
+		}
 	}
-	
-	int size1 = 0; 
-  	int size2 = 0; 
-  	int size3 = 0; 
-  	int fine = 0; 
-  	for(int i = 0; i < conn_components.size(); i++){
-    	if(conn_components[i] == 1) size1++; 
-    	if(conn_components[i] == 2) size2++; 
-    	if(conn_components[i] == 3) size3++; 
-    	if(conn_components[i] >= k) fine++; 
-  	}
-	if(k == 1) return fine; 
-  	else if(k == 2) return fine + size1 / 2; 
-  	else if(k == 3){
-    	if(size2 <= size1) return fine + size2 + (size1 - size2) / 3; 
-    	else return fine + size1 + (size2 - size1) / 2; 
-  	} else {
-		int match2 = size2/2; 
-		int match31 = std::min(size1, size3); 
-		int rem1 = std::max(0, size1 - size3); 
-		int rem2 = size2%2; 
-		int rem3 = std::max(0, size3-size1); 
-		int extra = 0; 
-		if(rem1 > 1) extra = (rem1 + rem2 * 2) / 4; 
-		else if(rem3 > 0) extra = (rem2 + rem3) / 2; 
-		// else if(rem3 > 0) extra = (3 * rem3 + 2 * rem2) / 4; 
-		return extra + match2 + match31 + fine; 
-  	}
-	
+	return counter;
 }
 
 void testcase() {
-	long n, k, f, s; std::cin >> n >> k >> f >> s;
+	int n, k, f; long s; std::cin >> n >> k >> f >> s;
 
+	// read points: first, we read all points and store them into a vector,
+	// together with their indices
 	typedef std::pair<K::Point_2,Index> IPoint;
-  	std::vector<IPoint> points;
-  	points.reserve(n);
-  	for (Index i = 0; i < n; ++i) {
-		long x, y;
+	std::vector<IPoint> points;
+	points.reserve(n);
+	for (Index i = 0; i < n; ++i) {
+		int x, y;
 		std::cin >> x >> y;
 		points.emplace_back(K::Point_2(x, y), i);
 	}
+
 	Delaunay t;
 	t.insert(points.begin(), points.end());
-
 
 	EdgeV edges;
   	edges.reserve(3*n); // there can be no more in a planar graph
@@ -103,56 +110,44 @@ void testcase() {
 		Index i1 = e->first->vertex((e->second+1)%3)->info();
 		Index i2 = e->first->vertex((e->second+2)%3)->info();
 		// ensure smaller index comes first
-    	if (i1 > i2) std::swap(i1, i2);
-    	edges.emplace_back(i1, i2, t.segment(e).squared_length());
+		if (i1 > i2) std::swap(i1, i2);
+		edges.emplace_back(i1, i2, t.segment(e).squared_length());	
   	}
-  	std::sort(edges.begin(), edges.end(), [](const Edge& e1, const Edge& e2) -> bool {
-		  return std::get<2>(e1) <std::get<2>(e2);
-	  });
+  	std::sort(edges.begin(), edges.end(),
+	    [](const Edge& e1, const Edge& e2) -> bool {
+	    	return std::get<2>(e1) < std::get<2>(e2);
+        		});
 
-	std::vector<std::vector<std::pair<int, long>>> G(n);
-	boost::disjoint_sets_with_storage<> uf(n);
-  	Index n_components = n;
-	std::vector<K::FT> emst_edges;
-  	for (EdgeV::const_iterator e = edges.begin(); e != edges.end(); ++e) {
-		// determine components of endpoints
-		Index c1 = uf.find_set(std::get<0>(*e));
-		Index c2 = uf.find_set(std::get<1>(*e));
-		if (c1 != c2) {
-			// this edge connects two different components => part of the emst
-			uf.link(c1, c2);
-			G[c1].push_back({c2, get<2>(*e)});
-      		G[c2].push_back({c1, get<2>(*e)}); 
-			emst_edges.push_back(std::get<2>(*e));
-			if (--n_components == 1) break;
+	int nrFamilies_q2 = q2(edges, k, s, n);
+
+	//For question 1 do binsearch on all possible s, we have to assign f families
+
+	int l = 0; int r = edges.size()-1;
+	long curBest = std::get<2>(edges[0]);
+	while (l < r){
+		int mid = l + (r-l)/2;
+		long cur_s = std::get<2>(edges[mid]);
+
+		int nrFamilies_with_cur_s = q2(edges, k, cur_s, n);
+
+		if (nrFamilies_with_cur_s >= f){
+			curBest = cur_s;
+			l = mid +1;
+		} else {
+			r = mid;
 		}
-  	}
-	std::sort(emst_edges.begin(), emst_edges.end());
-	int l = 0; int r = emst_edges.size()-1;
-	long res = 0;
-	while (l <= r){
-		int m = (l + r) / 2;
-    	int now = nrFamilies(G, emst_edges[m], n, k);
-    	if(now >= f && m < emst_edges.size() - 1 && nrFamilies(G, emst_edges[m + 1], n, k) < f){ res = emst_edges[m]; break;}  
-   		else if(now >= f && m == emst_edges.size() - 1){ res = emst_edges[m]; break;} 
-    	else if(now >= f) l = m + 1; 
-    	else if(now < f) r = m - 1;
-
 	}
-	
+	long size_s_q1 = curBest;
 
-	K::FT squaredDist = s;
-	int q2 = nrFamilies(G, squaredDist, n, k);
-	
-	std::cout << res << " " << q2 << std::endl;
+	std::cout << size_s_q1 << " " << nrFamilies_q2 << std::endl;
 	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/test1.in");
+	std::fstream in("./testsets/sample.in");
 	std::cin.rdbuf(in.rdbuf());
-	
+
 	int t;
 	std::cin >> t;
 	for (int i = 0; i < t; ++i)
