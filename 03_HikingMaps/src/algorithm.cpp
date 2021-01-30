@@ -3,153 +3,107 @@
 #include <iomanip>
 #include <string>
 #include <cmath>
-#include <fstream>
 #include <algorithm>
 #include <vector>
+#include <fstream>
+#include <set>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel IK;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
-bool checkInCluded(std::vector<IK::Point_2> &tr, IK::Point_2 &pt){
-	bool segmentIncluded = true;
-	for (int side = 0; side < 5; side += 2){
-		//Check orientation of points on side
-		IK::Point_2 p1 = tr[side];
-		IK::Point_2 p2 = tr[side+1];
-		IK::Point_2 q = tr[(side+2)%6];
-		bool leftTurn = CGAL::left_turn(p1, p2, q);
-		if (leftTurn){
-			bool incl = !(CGAL::right_turn(p1, p2, pt));
-			if (!incl){
-				segmentIncluded = false;
-			}
-		} else {
-			bool incl = !(CGAL::right_turn(p2, p1, pt));
-			if (!incl){
-				segmentIncluded = false;
-			}
-		}
+bool point_in_map(const std::vector<K::Point_2> &part, const K::Point_2 &p){
+	bool in_map = false;
+	if (!CGAL::right_turn(part[0], part[1], p) && !CGAL::right_turn(part[2], part[3], p) && !CGAL::right_turn(part[4], part[5], p)){
+		in_map = true;
 	}
-	return segmentIncluded;
-}
-
-bool contains(const std::vector<IK::Point_2> &t, const IK::Point_2 &p){
-  return !CGAL::right_turn(t[0], t[1], p) && !CGAL::right_turn(t[2], t[3], p) && !CGAL::right_turn(t[4], t[5], p);
+	return in_map;
 }
 
 void testcase() {
-	int m; std::cin >> m;
-	int n; std::cin >> n;
-	//std::cout << "m: " << m << " n: " << n << std::endl;
+	int m, n; std::cin >> m >> n;
 
-	//Read in all paths
-	std::vector<IK::Point_2> points;
+	//Read in path
+	std::vector<K::Point_2> path;
 	for (int i = 0; i < m; i++){
-		int x; std::cin >> x;
-		int y; std::cin >> y;
-		points.push_back(IK::Point_2(x, y));
+		long x, y; std::cin >> x >> y;
+		path.push_back(K::Point_2(x, y));
 	}
 
-	//Read in all map parts
-	std::vector<std::vector<int>> map_nr_contains_paths_nr(n, std::vector<int>());
+	//Read in map parts
+	std::vector<std::vector<K::Point_2>> map_parts;
 	for (int i = 0; i < n; i++){
-		std::vector<IK::Point_2> triangle;
-		for (int j = 0; j < 3; j++){
-			int a, b, c, d; std::cin >> a; std::cin >> b; std::cin >> c; std::cin >> d;
-			triangle.push_back(IK::Point_2(a, b));
-			triangle.push_back(IK::Point_2(c, d));
+		std::vector<K::Point_2> map;
+		for (int j = 0; j < 6; j++){
+			long x, y; std::cin >> x >> y;
+			map.push_back(K::Point_2(x, y));
 		}
-		// for(int j = 0; j < 6; j+=2){
-		// 	if(CGAL::right_turn(triangle[j],triangle[j+1], triangle[(j+2)%6])) std::swap(triangle[j], triangle[j+1]);
-		// }
+		//Orientation check:
+		for (int j = 0; j < 6; j+= 2){
+			int comp = (j+2) % 6;
+			if (!CGAL::left_turn(map[j], map[j+1], map[comp])){
+				std::swap(map[j], map[j+1]);
+			}
+		}
+		map_parts.push_back(map);
+	}
 
-		// for(int j = 0; j < m - 1; j++){
-      	// 	if(contains(triangle, points[j]) && contains(triangle, points[(j + 1) % m])){
-		// 		map_nr_contains_paths_nr[i].push_back(j);
-		// 	}
-		// }
+	//Create vector which tracks legs in map parts
+	std::vector<std::vector<int>> legs_in_map(n);
+	for (int i = 0; i < n; i++){
+		std::vector<K::Point_2> cur_map_part = map_parts[i];
 
-				//Check out all legs if it is contained in map
 		for (int j = 0; j < m-1; j++){
-			bool segmentIncluded = true;
-			IK::Point_2 segStart = points[j];
-			IK::Point_2 segEnd = points[j+1];
-			for (int side = 0; side < 5; side += 2){
-				//Check orientation of points on side
-				IK::Point_2 p1 = triangle[side];
-				IK::Point_2 p2 = triangle[side+1];
-				IK::Point_2 q = triangle[(side+2)%6];
-				bool leftTurn = CGAL::left_turn(p1, p2, q);
-				if (leftTurn){
-					bool start = !(CGAL::right_turn(p1, p2, segStart));
-					bool end = !(CGAL::right_turn(p1, p2, segEnd));
-					if (!(start && end)){
-						segmentIncluded = false;
-					}
-				} else {
-					bool start = !(CGAL::right_turn(p2, p1, segStart));
-					bool end = !(CGAL::right_turn(p2, p1, segEnd));
-					if (!(start && end)){
-						segmentIncluded = false;
-					}
-				}
+			int legNr = j;
+			K::Point_2 p1 = path[j];
+			K::Point_2 p2 = path[j+1];
+			if (point_in_map(cur_map_part, p1) && point_in_map(cur_map_part, p2)){
+				legs_in_map[i].push_back(j);
 			}
-			if (segmentIncluded){
-				map_nr_contains_paths_nr[i].push_back(j);
-			}
-		}
-
-
-		//Check out all legs if it is contained in map
-		bool first = checkInCluded(triangle, points[0]);
-		for (int j = 1; j < m; j++){
-			
-			bool second = checkInCluded(triangle, points[j]);
-			if (first && second){
-				map_nr_contains_paths_nr[i].push_back(j-1);
-			}
-			first = second;
 		}
 	}
 
-	int left, right;
-	std::vector<int> segments_map_count(m-1);
-	int curPathLength = 0;
-	int bestInterval = n-1;
-	while (right < n){
-		while (curPathLength < (m-1) && right < n){
-			for (int i = 0; i < map_nr_contains_paths_nr[right].size(); i++){
-				int curPathSegment = map_nr_contains_paths_nr[right][i];
-				if (segments_map_count[curPathSegment] == 0) {
-					curPathLength++;
-				}
-				segments_map_count[curPathSegment]++;
+	//Sliding window over legs in map
+	std::vector<int> leg_tracker(m-1);
+	std::set<int> cur_legs_covered;
+	int l = 0; int r = 0;
+	int best_interval = std::numeric_limits<int>::max();
+	while (r < n){
+		
+		//Increase r until path covered
+		while (cur_legs_covered.size() < (m-1) && r < n){
+			//First add all legs at r to set 
+			for (int i = 0; i < legs_in_map[r].size(); i++){
+				int curLegNr = legs_in_map[r][i];
+				leg_tracker[curLegNr] ++;
+				cur_legs_covered.insert(curLegNr);
 			}
-			right++;
+			r++;
 		}
 
-
-		while(curPathLength >= (m-1) && left < right){
-			//Check if new best inverval
-			if ((right-left) < bestInterval){
-				bestInterval = right-left;
-			}
-			for (int i = 0; i < map_nr_contains_paths_nr[left].size(); i++){
-				int curPathSegment = map_nr_contains_paths_nr[left][i];
-				segments_map_count[curPathSegment]--;
-				if (segments_map_count[curPathSegment] == 0){
-					curPathLength--;
+		//Increase l until path not covered anymore
+		while (cur_legs_covered.size() == (m-1)){
+			//Remove map parts from leg-tracker, if last map part removed, remove map-part from set
+			for (int i = 0; i < legs_in_map[l].size(); i++){
+				int curLegNr = legs_in_map[l][i];
+				leg_tracker[curLegNr] --;
+				if (leg_tracker[curLegNr] == 0){
+					cur_legs_covered.erase(cur_legs_covered.find(curLegNr));
 				}
 			}
-			left++;
+			l++;
+		}
+
+		//Check if new best found
+		if (r-l+1 < best_interval){
+			best_interval = r-l+1;
 		}
 	}
-
-	std::cout << bestInterval << std::endl;
+	std::cout << best_interval << std::endl;
+	
+	return;
 }
 
-
-int main(){
+int main() {
 	std::ios_base::sync_with_stdio(false);
 	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
@@ -158,4 +112,5 @@ int main(){
 	std::cin >> t;
 	for (int i = 0; i < t; ++i)
 		testcase();
+	return 0;
 }
