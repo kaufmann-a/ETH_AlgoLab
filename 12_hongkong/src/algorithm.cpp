@@ -1,99 +1,116 @@
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <limits>
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <fstream>
+#include <queue>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_face_base_with_info_2.h>
-#include <CGAL/Gmpq.h>
-#include <vector>
-#include <queue>
-#include <algorithm>
-#include <fstream>
-#include <functional>
-#include <queue>
-#include <vector>
-#include <iostream>
+#include <CGAL/Triangulation_vertex_base_2.h>
+#include <boost/pending/disjoint_sets.hpp>
 
-typedef CGAL::Exact_predicates_exact_constructions_kernel K;
-typedef CGAL::Triangulation_vertex_base_2<K> Vb;
-typedef CGAL::Triangulation_face_base_with_info_2<K::FT,K> Fb;
-typedef CGAL::Triangulation_data_structure_2<Vb,Fb> Tds;
-typedef CGAL::Delaunay_triangulation_2<K,Tds>  Triangulation;
-typedef Triangulation::Face_handle Face_handle;
-typedef K::Point_2 P;
+typedef CGAL::Exact_predicates_exact_constructions_kernel 		K;
+typedef std::size_t                                           	Index;
+typedef CGAL::Triangulation_vertex_base_2<K>   		   		  	Vb;
+typedef CGAL::Triangulation_face_base_with_info_2<K::FT, K>   	Fb;
+typedef CGAL::Triangulation_data_structure_2<Vb,Fb>           	Tds;
+typedef CGAL::Delaunay_triangulation_2<K,Tds>                 	Delaunay;
 
-void testcase(){
-  int n,m;
-  K::FT r;
-  std::cin >> n >> m >> r;
+void testcase() {
+	size_t n, m; long rad; std::cin >> n >> m >> rad;
+	K::FT r = rad;
 
-  std::vector<P> trees(n);
-  for(int i=0;i<n;++i){
-    long x,y;
-    std::cin >> x >> y;
-    trees[i] = P(x,y);
-  }
+	std::vector<K::Point_2> pts;
+	pts.reserve(n);
+	for (std::size_t i = 0; i < n; ++i) {
+		long x, y;
+		std::cin >> x >> y;
+		pts.push_back(K::Point_2(x, y));
+	}
+	// construct triangulation
+	Delaunay t;
+	t.insert(pts.begin(), pts.end());
 
-  Triangulation t;
-  t.insert(trees.begin(),trees.end());
+	std::priority_queue<std::pair<K::FT, Delaunay::Face_handle>> prio_queue;
+	for (auto it = t.all_faces_begin(); it != t.all_faces_end(); it++){
+		//First find clearance
+		if (t.is_infinite(it)){
+			it->info() = std::numeric_limits<double>::max();
+			prio_queue.push(std::make_pair(std::numeric_limits<double>::max(), it));
+		} else {
+			K::Point_2 voronoy = t.dual(it);
+			K::Point_2 anyVertex = it->vertex(0)->point();
 
-  std::priority_queue<std::pair<K::FT,Face_handle>> Q;
-  for(Triangulation::All_faces_iterator it=t.all_faces_begin(); it != t.all_faces_end(); ++it){
-    if(t.is_infinite(it)){
-      it->info() = std::numeric_limits<double>::max();
-    } else {
-      it->info() = CGAL::squared_distance(t.dual(it), it->vertex(0)->point());
-    }
-    Q.push({it->info(),it});
-  }
+			K::FT clearance = CGAL::squared_distance(voronoy, anyVertex);
+			it->info() = clearance;
+			prio_queue.push(std::make_pair(clearance, it));
+		}
+	}
 
-  // Prioritized search
-  while(!Q.empty()){
-    auto elem = Q.top(); Q.pop();
-    K::FT old_max_out = elem.first;
-    Face_handle face = elem.second;
-    if(old_max_out < face->info()) continue;
+	//Greedy optimization of takeoff clearances
+	while(!prio_queue.empty()){
+		auto cur_face = prio_queue.top(); prio_queue.pop();
+		K::FT clearance_cur_face = cur_face.first;
+		Delaunay::Face_handle cur_face_handle = cur_face.second;
+		
+		if(clearance_cur_face < cur_face_handle->info()){ //This is the case in which face was already assigned a max clearance
+			continue;
+		} else {
+			for(int i = 0; i < 3; i++){
+				auto cur_neighbour = cur_face_handle->neighbor(i);
+				if (!t.is_infinite(cur_neighbour)){
+					K::FT edge_length_cur_neighbour = t.segment(cur_face_handle, i).squared_length();
+					K::FT min = std::min(edge_length_cur_neighbour, cur_face_handle->info());
 
-    for(int i=0;i<3;++i){
-      Face_handle fh = face->neighbor(i);
-      K::FT l = CGAL::squared_distance(face->vertex((i+1)%3)->point(),
-                                       face->vertex((i+2)%3)->point());
-      K::FT from_current = std::min(l,face->info());
-      if(from_current > fh->info()){
-        fh->info()= from_current;
-        Q.push({from_current,fh});
-      }
-    }
-  }
+					if (min > cur_neighbour->info()){
+						cur_neighbour->info() = min;
+						prio_queue.push(std::make_pair(min, cur_neighbour));
+					}
+				}
+			}
+		}
+	}
 
-  for(int i=0;i<m;++i){
-    long x,y;
-    P center;
-    K::FT s;
-    std::cin >> x >> y >> s;
-    center = P(x,y);
+	//Read in baloons
+	for (size_t i = 0; i < m; i++){
+		long x, y, ss; std::cin >> x >> y >> ss;
+		K::FT s = ss;
+		K::Point_2 cur_bal = K::Point_2(x, y);
+		
+		//First check if balon can be inflated
+		auto face_of_cur_bal = t.locate(cur_bal);
+		K::Point_2 nearest_tree = t.nearest_vertex(cur_bal, face_of_cur_bal)->point();
+		if (CGAL::squared_distance(cur_bal, nearest_tree) >= CGAL::square(r+s)){
+			
+			K::FT clearance = face_of_cur_bal->info();
+			K::FT needed_clearance = CGAL::square(2*r+2*s);
+			if (clearance >= needed_clearance){
+				std::cout << "y";
+			} else {
+				std::cout << "n";
+			}
+		} else {
+			std::cout << "n";
+		}	
 
-    Face_handle face = t.locate(center);
-    P nearest = t.nearest_vertex(center,face)->point();
-    // if cannot be inflated
-    if(CGAL::square((r+s)) > CGAL::squared_distance(center,nearest)){
-      std::cout << 'n';
-    } else {
-      if(CGAL::square(2*(r+s)) <= face->info()){
-        std::cout << 'y';  
-      } else {
-        std::cout << 'n';  
-      }
-    }
-  }
-  std::cout << std::endl;
+	}
+	std::cout << std::endl;
 
+	return;
 }
 
-int main(){
-  std::ios_base::sync_with_stdio(false);
-  std::fstream in("./testsets/sample.in");
-  std::cin.rdbuf(in.rdbuf());
+int main() {
+	std::ios_base::sync_with_stdio(false);
+	std::fstream in("./testsets/test1.in");
+	std::cin.rdbuf(in.rdbuf());
 
-  int T;
-  std::cin >> T;
-  while(T--) testcase();
+	int t;
+	std::cin >> t;
+	for (int i = 0; i < t; ++i)
+		testcase();
+	return 0;
 }
