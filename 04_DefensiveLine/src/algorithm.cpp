@@ -4,84 +4,87 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
-#include <fstream>
 #include <vector>
-#include <set>
+#include <fstream>
+
+//i = nr attackers, j = start position in defensive line
+int solve_recursive(std::vector<std::vector<int>> &dp, std::vector<int> &def_intervals, int i, int j, bool &fail){
+	//Base case
+	if (i ==0 || j == def_intervals.size()){
+		return 0;
+	}
+
+	//DP-Value already there
+	if (dp[i][j] != -1){
+		return dp[i][j];
+	}
+
+	if (def_intervals[j] != -1){ //Case in which an interval starts at current position
+		if (i == 1) { //We found an interval and just one player is remaining, thus there is a valid strategy
+			fail = false;
+		}
+		int interval_size = def_intervals[j] - j + 1;
+		int nr_attacked_using_cur_int = interval_size + solve_recursive(dp, def_intervals, i-1, j+interval_size, fail);
+		int nr_attacked_not_using_cur_int = solve_recursive(dp, def_intervals, i, j+1, fail);
+		dp[i][j] = std::max(nr_attacked_using_cur_int, nr_attacked_not_using_cur_int);
+		return dp[i][j];
+	} else { //No interval starts at current position
+		dp[i][j] = solve_recursive(dp, def_intervals, i, j+1, fail);
+		return dp[i][j];
+	}
+}
 
 void testcase() {
-	int n, m, k; std::cin >> n; std::cin >> m; std::cin >> k;
+	int n, m, k; std::cin >> n >> m >> k;
 
-	std::vector<int> def_values(n);
-	std::vector<int> dp(n+1, 0);
-	dp[0] = 0;
-	std::multiset<int> nr;
-
+	std::vector<int> def_values(n, 0);
 	for (int i = 0; i < n; i++){
 		std::cin >> def_values[i];
-		//std::cout << "value: " << def_values[i] << std::endl;
 	}
 
-	//Do sliding window approach
-	int leftIdx = 0; 
-	int rightIdx = 0;
-	int curMaxPlayersAttacked = 0;
+	//Do sliding window
+	std::vector<int> def_intervals(n, -1);
+	int l = 0; int r = 0;
 	int curSum = 0;
-	while (rightIdx < n){
-		while (rightIdx < n && curSum < k){
-			curSum += def_values[rightIdx];
-			//std::cout << "first while: " << curSum << std::endl;
-			dp[rightIdx+1] = dp[rightIdx]; //due to basecase dp table indexes are always +1
-			rightIdx++;
+
+	while (r < n){
+		while (curSum < k && r < n){
+			curSum += def_values[r];
+			r++;
 		}
-		
-		while (leftIdx < rightIdx && curSum >= k){
-			if (curSum == k){
-				//std::cout << "second while: " << curSum << std::endl;
-				int tempPlayersAttacked = rightIdx - leftIdx + dp[leftIdx];
-				//std::cout << "tempPlayersattacked: " << tempPlayersAttacked << std::endl;
-				//std::cout << "curMaxPlayersattacked: " << curMaxPlayersAttacked << std::endl;
-				if (tempPlayersAttacked > curMaxPlayersAttacked){
-					dp[rightIdx] = tempPlayersAttacked;
-					nr.insert(rightIdx - leftIdx);
-					curMaxPlayersAttacked = tempPlayersAttacked;
-				}
-			} 
-			
-			curSum -= def_values[leftIdx];
-			//std::cout << "curSum sendwhile: " << curSum << std::endl;
-			leftIdx++;
+		while(curSum > k){
+			curSum -= def_values[l];
+			l++;
 		}
+		if (curSum == k){
+			def_intervals[l] = r-1;
+			curSum -= def_values[l];
+			l++;
+		} 
 	}
 
-	int sum = 0; 
-	int count = 0;
-	//std::cout << "m is: " << m << std::endl; 
-	for (std::multiset<int>::reverse_iterator it = nr.rbegin(); it != nr.rend(); it++){
-		if (count < m){
-			sum += *it;
-			//std::cout << "sumcalc: " << *it << std::endl;
-		}
-		count++;
-	}
+	//Run dp
+	std::vector<std::vector<int>> dp(m+1, std::vector<int>(n, -1));
+	bool fail = true;
+	int nrAttacked = solve_recursive(dp, def_intervals, m, 0, fail);
 
-	if (count < m){
+	if (fail){
 		std::cout << "fail" << std::endl;
 	} else {
-		std::cout << sum << std::endl;
+		std::cout << nrAttacked << std::endl;
 	}
+
+	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-
 	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
 
-	int t; std::cin >> t;
-	for (int i = 0; i < t; ++i){
+	int t;
+	std::cin >> t;
+	for (int i = 0; i < t; ++i)
 		testcase();
-	}
-		
-
 	return 0;
 }
