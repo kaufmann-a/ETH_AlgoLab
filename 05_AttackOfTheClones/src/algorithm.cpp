@@ -6,91 +6,72 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
-#include <limits>
 
-bool sortby (std::pair<int, int> &p1, std::pair<int, int> &p2){
+bool sort_e(std::pair<int, int> &p1, std::pair<int, int> &p2){
 	return p1.second < p2.second;
+}
+
+int schedule(std::vector<std::pair<int, int>> &jedis, int startPos, int endPos, int counter){
+	int index = 0; int left = startPos; int nrJedis = counter;
+	while (jedis[index].second < startPos){ //Find first jedi we could potentially use
+		index++;
+		if (index == jedis.size()){
+			index--;
+			break;
+		}
+	}
+
+	while (jedis[index].second <= endPos && index < jedis.size()){
+		if (jedis[index].first >= left && jedis[index].first <= jedis[index].second){ //We can use the yedi
+			counter++;
+			left = jedis[index].second +1;
+		}
+		index++;
+	}
+	return counter;
 }
 
 void testcase() {
 	int n, m; std::cin >> n >> m;
+
+	std::vector<std::pair<int, int>> sort_end;
 	
-	std::vector<std::pair<int, int>> jedis_normal;
-
-  //Variables for jedis crossing zero point
-  int curShortest = std::numeric_limits<int>::max(); int curShortest_a = 0; int curShortest_b = 0; bool foundShortest = false;
-  int curMinb_b = m; int curMinb_a = 0; bool foundMin = false;
-  int curMaxa_a = 0; int curMaxa_b = 0; bool foundMax = false;
-
-  for (int i = 0; i < n; i++){
+	std::pair<int, int> earliest_finish = std::make_pair(-1, m);
+	std::pair<int, int> latest_start = std::make_pair(0, -1);
+	std::pair<int, int> shortest_seg = std::make_pair(0, m+1);
+	bool found_overlap = false;
+	for (int i = 0; i < n; i++){
 		int a, b; std::cin >> a >> b;
-
-    //Check if normal jedi or if it crosses the zero point
-    if (b >= a){ //Normal jedi
-      jedis_normal.push_back(std::make_pair(a, b));
-    } else {
-      //This jedi crosses the zero point, just add if it is of interest (shortest segment, smallest a, smallest b)
-      if (m-a+b < curShortest){
-        curShortest = m-a+b;
-        curShortest_a = a; curShortest_b = b;
-        foundShortest = true;
-      }
-      if (b < curMinb_b){
-        curMinb_b = b; curMinb_a = a;
-        foundMin = true;
-      }
-      if (a > curMaxa_a){
-        curMaxa_a = a; curMaxa_b = b;
-        foundMax = true;
-      }
-    }
+		std::pair<int, int> p = std::make_pair(a, b);
+		sort_end.push_back(p);
+		if (a > b){
+			found_overlap = true;
+			if (p.second < earliest_finish.second) earliest_finish = p;
+			if (p.first > latest_start.first) latest_start = p;	
+			if (p.second - p.first+1  < shortest_seg.second - shortest_seg.first+1) shortest_seg = p;
+		}
 	}
 
-	std::sort(jedis_normal.begin(), jedis_normal.end(), sortby);
-	
-  //We now have 4 possibilities:
-  //1. No jedi crossing zeropoint in solution
-  //2. Jedi with shortest segment crossing zeropoint in solution
-  //3. Jedi with smalles b, crossing zeropoint in solution
-  //3. Jedi with largest a, crossing zeropoint in solution
-  std::vector<std::pair<bool, std::pair<int, int>>> possibilities = {std::make_pair(true, std::make_pair(0, m+1)), std::make_pair(foundShortest, std::make_pair(curShortest_b, curShortest_a)), std::make_pair(foundMin, std::make_pair(curMinb_b, curMinb_a)), std::make_pair(foundMax, std::make_pair(curMaxa_b, curMaxa_a))};
-  
-  int maxJedis = 0;
-  for (int i = 0; i < 4; i++){
-    if (!possibilities[i].first){
-      continue;
-    }
-    int nrJedis = 1;
-    if (i == 0){
-      nrJedis = 0;
-    }
-    int leftBorder = possibilities[i].second.first;
-    int rightBorder = possibilities[i].second.second;
-    std::vector<std::pair<int, int>>::iterator it = jedis_normal.begin();
-    while (leftBorder < rightBorder && it != jedis_normal.end()){
-      if (it->first > leftBorder && it->second < rightBorder){
-        nrJedis++;
-        leftBorder = it->second;
-      }
-      it++;
-    }
-    if (nrJedis > maxJedis){
-      maxJedis = nrJedis;
-    }
-  }
-
-  std::cout << maxJedis << std::endl;
-
+	std::sort(sort_end.begin(), sort_end.end(), sort_e);
+	int max = 0;
+	if (found_overlap){
+		int earliest_fin = schedule(sort_end, earliest_finish.second+1, earliest_finish.first-1, 1);
+		int late_start = schedule(sort_end, latest_start.second+1, latest_start.first-1, 1);
+		int short_seg = schedule(sort_end, shortest_seg.second+1, shortest_seg.first-1, 1);
+		max = std::max(std::max(earliest_fin, late_start), short_seg);
+	}
+	max = std::max(max, schedule(sort_end, 1, m, 0));
+	std::cout << max << std::endl;
 	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-
 	std::fstream in("./testsets/test1.in");
 	std::cin.rdbuf(in.rdbuf());
-	
-	int t; std::cin >> t;
+
+	int t;
+	std::cin >> t;
 	for (int i = 0; i < t; ++i)
 		testcase();
 	return 0;
