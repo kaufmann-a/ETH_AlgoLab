@@ -7,76 +7,74 @@
 #include <vector>
 #include <fstream>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_exact_constructions_kernel_with_sqrt.h>
 #include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/boost/graph/graph_traits_Delaunay_triangulation_2.h>
-#include <boost/graph/kruskal_min_spanning_tree.hpp>
-#include <set>
+#include <CGAL/Triangulation_vertex_base_with_info_2.h>
+#include <CGAL/Triangulation_face_base_2.h>
+#include <boost/pending/disjoint_sets.hpp>
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
-typedef Triangulation::Finite_edges_iterator  Edge_iterator;
-typedef Triangulation::Finite_vertices_iterator Vertex_iterator;
-typedef std::map<Triangulation::Point_2, double> Dist_map;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel 	K;
+typedef CGAL::Exact_predicates_exact_constructions_kernel_with_sqrt EKS;
+typedef std::size_t                                            	Index;
+typedef CGAL::Triangulation_vertex_base_with_info_2<Index,K>   	Vb;
+typedef CGAL::Triangulation_face_base_2<K>                     	Fb;
+typedef CGAL::Triangulation_data_structure_2<Vb,Fb>            	Tds;
+typedef CGAL::Delaunay_triangulation_2<K,Tds>                  	Delaunay;
+typedef std::tuple<Index,Index,K::FT> 							Edge;
+typedef std::vector<Edge> 										EdgeV;
 
-double periode (double size){
-	double dist = sqrt(size);
-	if (dist <= 0.5){
-		return 0;
-	} else {
-		return (int) std::ceil(std::sqrt(dist-0.5));
-	}
+double ceil_to_double(const EKS::FT &x)
+{
+  double a = std::ceil(CGAL::to_double(x));
+  while (a < x) a += 1;
+  while (a-1 >= x) a -= 1;
+  return a;
+}
+
+long answer(K::FT curSquaredDist){
+	EKS::FT exact_squared_dist = curSquaredDist;
+	exact_squared_dist = exact_squared_dist/4;
+	exact_squared_dist = CGAL::sqrt(exact_squared_dist);
+	exact_squared_dist -= 0.5;
+	exact_squared_dist = CGAL::sqrt(exact_squared_dist);
+	double dist = ceil_to_double(exact_squared_dist);
+	long long_dist = dist;
+	return long_dist;
 }
 
 void testcase(int n) {
 	int l, b, r, t; std::cin >> l >> b >> r >> t;
 
-	//read all points
-	std::vector<K::Point_2> pts;
-	pts.reserve(n);
-	for (int i = 0; i < n; i++){
-		int x, y; std::cin >> x >> y;
-		pts.push_back(K::Point_2(x, y));
-
+	std::vector<K::Point_2> points;
+	for (Index i = 0; i < n; ++i) {
+		int x, y;
+		std::cin >> x >> y;
+		points.push_back(K::Point_2(x, y));
 	}
-	Triangulation triang;
-	triang.insert(pts.begin(), pts.end());
+	Delaunay tr;
+	tr.insert(points.begin(), points.end());
 
-
-	Dist_map distances;
-
-	//Insert verteces to distmap with closest dish edge
-	for (Vertex_iterator vert_it = triang.finite_vertices_begin(); vert_it != triang.finite_vertices_end();  vert_it++){
-		int vert_x = vert_it->point().x();
-		int vert_y = vert_it->point().y();
-		double min_dist = (double) std::min(std::min(std::pow((vert_x-l), 2), std::pow((vert_x-r),2)), std::min(std::pow((vert_y-t),2), std::pow((vert_y-b),2)));
-		distances.insert(std::make_pair(vert_it->point(), min_dist));
+	//First assign every vertex squared dist to closest dish edge times 4
+	for (auto it = tr.finite_vertices_begin(); it != tr.finite_vertices_end(); it++){
+		K::FT x = it->point().x(); K::FT y = it->point().y();
+		it->info() = std::min(std::min(std::min(CGAL::square(x-l)*4, CGAL::square(x-r)*4), CGAL::square(y-t)*4), CGAL::square(y-b)*4);
 	}
 
-	//Iterate over all edges and assign distance to each vertex
-	for (Edge_iterator edge_it = triang.finite_edges_begin(); edge_it != triang.finite_edges_end(); edge_it++){
-		Triangulation::Vertex_handle vert1 = edge_it->first->vertex((edge_it->second + 1) % 3);
-		Triangulation::Vertex_handle vert2 = edge_it->first->vertex((edge_it->second + 2) % 3);
-		Triangulation::Point_2 p1 = vert1->point();
-		Triangulation::Point_2 p2 = vert2->point();
-
-		double dist = CGAL::to_double(CGAL::squared_distance(p1, p2)) / 4;
-
-		if (distances[p1] > dist){
-			distances[p1] = dist;
-		}
-		if (distances[p2] > dist){
-			distances[p2] = dist;
-		}
+	//Iterate over edges
+	for (auto it = tr.finite_edges_begin(); it != tr.finite_edges_end(); it++){
+		Delaunay::Vertex_handle v1 = it->first->vertex((it->second+1)%3);
+		Delaunay::Vertex_handle v2 = it->first->vertex((it->second+2)%3);
+		if (tr.segment(it).squared_length() < v1->info()) v1->info() = tr.segment(it).squared_length();
+		if (tr.segment(it).squared_length() < v2->info()) v2->info() = tr.segment(it).squared_length();
 	}
 
-	std::vector<double> only_dist;
-	only_dist.reserve(n);
-	for (Dist_map::iterator dist_it = distances.begin(); dist_it != distances.end(); dist_it++){
-		only_dist.push_back(dist_it->second);
+	std::vector<K::FT> lengths;
+	for (auto it = tr.finite_vertices_begin(); it != tr.finite_vertices_end(); it++){
+		lengths.push_back(it->info());
 	}
-	std::sort(only_dist.begin(), only_dist.end(), std::less<double>());
+	std::sort(lengths.begin(), lengths.end());
 
-	std::cout << periode(only_dist[0]) << " " << periode(only_dist[n/2]) << " " << periode(only_dist[n-1]) << std::endl;
+	std::cout << answer(lengths[0]) << " " << answer(lengths[n/2]) << " " << answer(lengths[n-1]) << std::endl;;
 
 	return;
 }
@@ -86,7 +84,8 @@ int main() {
 	std::fstream in("./testsets/sample.in");
 	std::cin.rdbuf(in.rdbuf());
 
-	int n; std::cin >> n;
+	int n;
+	std::cin >> n;
 	while (n != 0){
 		testcase(n);
 		std::cin >> n;
