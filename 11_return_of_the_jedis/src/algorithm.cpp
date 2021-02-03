@@ -6,75 +6,74 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
-// BGL includes
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/kruskal_min_spanning_tree.hpp>
+#include <boost/pending/disjoint_sets.hpp>
 
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-  boost::no_property, boost::property<boost::edge_weight_t, int> >      weighted_graph;
-typedef boost::property_map<weighted_graph, boost::edge_weight_t>::type weight_map;
-typedef boost::graph_traits<weighted_graph>::edge_descriptor            edge_desc;
-typedef boost::graph_traits<weighted_graph>::vertex_descriptor          vertex_desc;
+struct Edge{
+	int u;
+	int v; 
+	int weight;
 
-bool sortEdge(std::tuple<int, int, int> &edge1, std::tuple<int, int, int> &edge2){
-	return std::get<2>(edge1) < std::get<2>(edge2);
-}
+	bool operator <(const Edge &other) const{
+		return weight < other.weight;
+	}
+};
 
-int calculate_mst(std::vector<std::tuple<int, int, int>> &edges, std::vector<int> &mst_edge_indexes, int n, int nrEdgeToIgnore){
-	int cost = 0;
-	//int index_mst_edges = 0;
-	boost::disjoint_sets_with_storage<> union_find(n);
-	for (int i = 0; i < edges.size(); i++){
-		if (nrEdgeToIgnore == i){
-			continue;
-		}
-		int u = union_find.find_set(std::get<0>(edges[i]));
-		int v = union_find.find_set(std::get<1>(edges[i]));
-		if (u != v){
-			union_find.link(u, v);
-			cost += std::get<2>(edges[i]);
-			mst_edge_indexes.push_back(i);
-			if(--n == 1) break;
-			//index_mst_edges++;
+int calc_mst(std::vector<Edge> &edges, std::vector<int> &to_ignore, size_t nr_to_ignore, bool fill_ignore_vec, size_t n){
+	// setup and initialize union-find data structure
+	boost::disjoint_sets_with_storage<> uf(n);
+	size_t n_components = n;
+	size_t cur_sum_edge_weights = 0;
+	for (size_t i = 0; i < edges.size(); i++){
+		if (i != nr_to_ignore){
+			Edge cur_edge = edges[i];
+			int c1 = uf.find_set(cur_edge.u);
+			int c2 = uf.find_set(cur_edge.v);
+			if (c1 != c2){
+				uf.link(c1, c2);
+				cur_sum_edge_weights += cur_edge.weight;
+				if (fill_ignore_vec){
+					to_ignore.push_back(i);
+				}
+				if (--n_components == 1) break;
+			}
 		}
 	}
-	return cost;
+	return cur_sum_edge_weights;
 }
 
 
 void testcase() {
-	int n, index; std::cin >> n >> index;
+	size_t n, s; std::cin >> n >> s;
 
-	std::vector<std::tuple<int, int, int>> edges;
-	for(int i = 0; i < n-1; i++) {
-		for(int j = i+1; j < n; j++) {
-			int cost;
-			std::cin >> cost;
-			edges.push_back(std::make_tuple(i, j, cost));
+	std::vector<Edge> edges;
+	for (size_t j = 1; j <= n-1; j++){
+		for (size_t k = 1; k <= n-j; k++){
+			int u = j-1; int v = j+k-1; int weight; std::cin >> weight;
+			Edge e = {}; e.u = u; e.v = v; e.weight = weight;
+			edges.push_back(e);
 		}
 	}
-	
-	std::sort(edges.begin(), edges.end(), sortEdge);
-	std::vector<int> mst;
-	calculate_mst(edges, mst, n, edges.size()+1);
+	std::sort(edges.begin(), edges.end());
 
-	int cost = std::numeric_limits<int>::max();
-	for (int i = 0; i < mst.size(); i++){
-		int curEdgeToIgnore = mst[i];
-		std::vector<int> mst_cur;
-		int curCost = calculate_mst(edges, mst_cur, n, curEdgeToIgnore);
-		cost = std::min(curCost, cost);
+	std::vector<int> to_ignore;
+	calc_mst(edges, to_ignore, edges.size(), true, n);
+
+	int second_best = std::numeric_limits<int>::max();
+	for (size_t i = 0; i < to_ignore.size(); i++){
+		int next = calc_mst(edges, to_ignore, to_ignore[i], false, n);
+		if (next < second_best){
+			second_best = next;
+		}
 	}
-	std::cout << cost << std::endl;
-
+	std::cout << second_best << std::endl;
 	return;
 }
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::fstream in("./testsets/test1.in");
+	std::fstream in("./testsets/sample.in");
 	std::cin.rdbuf(in.rdbuf());
-	
+
 	int t;
 	std::cin >> t;
 	for (int i = 0; i < t; ++i)
