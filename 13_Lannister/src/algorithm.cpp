@@ -1,97 +1,110 @@
-{\rtf1\ansi\ansicpg1252\cocoartf1348\cocoasubrtf170
-{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural
+#include <limits>
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <fstream>
+#include <CGAL/QP_models.h>
+#include <CGAL/QP_functions.h>
+#include <CGAL/Gmpz.h>
+#include <CGAL/Gmpq.h>
 
-\f0\fs24 \cf0 #include <limits>\
-#include <iostream>\
-#include <iomanip>\
-#include <string>\
-#include <cmath>\
-#include <algorithm>\
-#include <vector>\
-\
-#include <CGAL/QP_models.h>\
-#include <CGAL/QP_functions.h>\
-#include <CGAL/Gmpz.h>\
-\
-// choose input type (input coefficients must fit)\
-typedef long IT;\
-// choose exact type for solver (CGAL::Gmpz or CGAL::Gmpq)\
-typedef CGAL::Gmpz ET;\
-\
-// program and solution types\
-typedef CGAL::Quadratic_program<IT> Program;\
-typedef CGAL::Quadratic_program_solution<ET> Solution;\
-\
-using namespace std;\
-\
-long round_to_long(const CGAL::Quotient<ET> & x)\{\
-  double y = ceil(CGAL::to_double(x));\
-  while(y < x) y++;\
-  while(y-1 >= x) y--;\
-  return (long) y;\
-\}\
-\
-void testcase() \{\
-  int n, m; long s;\
-  cin >> n >> m >> s;\
-\
-  Program lp (CGAL::SMALLER, false, 0, false, 0); \
-  //We use the following variables:\
-  // v0 = b_s, v1 = c_s, v2 = c_w, v4 = d;\
-  int bs = 0; int cs = 1; int cw = 2; int d = 4;\
-  \
-  //sums for final check length of all sewage pipes:\
-  long sum_x = 0; long sum_y = 0;\
-  int con_nr = 0;\
-  \
-  for (int i = 0; i < n; i++)\{\
-    long x, y; std::cin >> x >> y;\
-    lp.set_a(bs, con_nr, -y); lp.set_a(cs, con_nr, -1); lp.set_a(cw, con_nr, 0); lp.set_a(d, con_nr, 0); lp.set_b(con_nr, -x); con_nr++;\
-    lp.set_a(bs, con_nr, x); lp.set_a(cs, con_nr, 0); lp.set_a(cw, con_nr, 1); lp.set_a(d, con_nr, -1); lp.set_b(con_nr, -y); con_nr++; \
-    lp.set_a(bs, con_nr, -x); lp.set_a(cs, con_nr, 0); lp.set_a(cw, con_nr, -1); lp.set_a(d, con_nr, -1); lp.set_b(con_nr, y); con_nr++;\
-    sum_x -= x;\
-    sum_y += y;\
-  \}\
-  \
-  for (int i = 0; i < m; i++)\{\
-    long x, y; std::cin >> x >> y;    \
-    lp.set_a(bs, con_nr, y); lp.set_a(cs, con_nr, 1); lp.set_a(cw, con_nr, 0); lp.set_a(d, con_nr, 0); lp.set_b(con_nr, x); con_nr++;\
-    lp.set_a(bs, con_nr, x); lp.set_a(cs, con_nr, 0); lp.set_a(cw, con_nr, 1); lp.set_a(d, con_nr, -1); lp.set_b(con_nr, -y); con_nr++; \
-    lp.set_a(bs, con_nr, -x); lp.set_a(cs, con_nr, 0); lp.set_a(cw, con_nr, -1); lp.set_a(d, con_nr, -1); lp.set_b(con_nr, y); con_nr++;\
-    sum_x += x;\
-    sum_y -= y;\
-  \}\
-  \
-  lp.set_l(d, true);\
-  lp.set_c(d, 1);\
-  \
-  Solution sol = CGAL::solve_linear_program(lp, ET());\
-  if (sol.is_infeasible()) \{\
-    std::cout << "Yuck!" << std::endl;\
-  \} else \{\
-    if (s == -1)\{\
-      std::cout << round_to_long(sol.objective_value()) << std::endl;\
-    \} else \{\
-      //This is the case where we have to check if there is enough money for the sewage pipes\
-      //we have to add the additional cost constraint and recalculate the lp\
-      lp.set_a(bs, con_nr, sum_y); lp.set_a(cs, con_nr, n-m); lp.set_a(cw, con_nr, 0); lp.set_a(d, con_nr, 0); lp.set_b(con_nr, s-sum_x);\
-      sol = CGAL::solve_linear_program(lp, ET());\
-      if (sol.is_infeasible())\{\
-        std::cout << "Bankrupt!" << std::endl;\
-      \} else \{\
-        std::cout << round_to_long(sol.objective_value()) << std::endl;\
-      \}\
-    \}\
-  \}\
-  return;\
-\}\
-\
-int main() \{\
-  std::ios_base::sync_with_stdio(false);\
-  int t;\
-  std::cin >> t;\
-  for (int i = 0; i < t; ++i) testcase();\
-\}}
+// choose input type (input coefficients must fit)
+typedef long IT;
+// choose exact type for solver (CGAL::Gmpz or CGAL::Gmpq)
+typedef CGAL::Gmpz ET;
+typedef CGAL::Quadratic_program<IT> Program;
+typedef CGAL::Quadratic_program_solution<ET> Solution;
+
+double ceil_to_double(const CGAL::Quotient<ET> &x)
+{
+  double a = std::ceil(CGAL::to_double(x));
+  while (a < x) a += 1;
+  while (a-1 >= x) a -= 1;
+  return a;
+}
+
+void testcase() {
+	Program lp (CGAL::SMALLER, false, 0, false, 0); 
+
+	//Variables
+	int bs = 0; int cs = 1; int c_ = 2; int d = 3;
+
+	int n, m; long s; std::cin >> n >> m >> s;
+
+	int const_nr = 0;
+	long x_sum = 0;
+	long y_sum = 0;
+	//First read in nobel houses
+	for (int i = 0; i < n; i++){
+		int x, y; std::cin >> x >> y;
+		lp.set_a(bs, const_nr, -y); lp.set_a(cs, const_nr, -1); lp.set_a(c_, const_nr, 0); lp.set_a(d, const_nr, 0); lp.set_b(const_nr, -x);
+		const_nr++;
+		lp.set_a(bs, const_nr, -x); lp.set_a(cs, const_nr, 0); lp.set_a(c_, const_nr, -1); lp.set_a(d, const_nr, -1); lp.set_b(const_nr, y);
+		const_nr++;
+		lp.set_a(bs, const_nr, x); lp.set_a(cs, const_nr, 0); lp.set_a(c_, const_nr, 1); lp.set_a(d, const_nr, -1); lp.set_b(const_nr, -y);
+		const_nr++;
+		
+		x_sum -= x;
+		y_sum += y;
+		
+	}
+
+	//Read in common houses
+	for (int i = 0; i < m; i++){
+		int x, y; std::cin >> x >> y;
+		lp.set_a(bs, const_nr, y); lp.set_a(cs, const_nr, 1); lp.set_a(c_, const_nr, 0); lp.set_a(d, const_nr, 0); lp.set_b(const_nr, x);
+		const_nr++;
+		lp.set_a(bs, const_nr, -x); lp.set_a(cs, const_nr, 0); lp.set_a(c_, const_nr, -1); lp.set_a(d, const_nr, -1); lp.set_b(const_nr, y);
+		const_nr++;
+		lp.set_a(bs, const_nr, x); lp.set_a(cs, const_nr, 0); lp.set_a(c_, const_nr, 1); lp.set_a(d, const_nr, -1); lp.set_b(const_nr, -y);
+		const_nr++;
+
+		x_sum += x;
+		y_sum -= y;
+		
+	}
+
+	lp.set_l(d, true, 0);
+	lp.set_c(d, 1);
+
+	Solution sol = CGAL::solve_linear_program(lp, ET());
+	if (sol.is_infeasible()){ //Sewage pipe can't separate the houses
+		std::cout << "Yuck!" << std::endl;
+	} else { //We need to check if we are bankrupt
+		if (s == -1){ //No cost constraint
+			double sol_ = ceil_to_double(sol.objective_value());
+			long sol_long = sol_;
+			std::cout << sol_long << std::endl;
+		} else {
+			lp.set_a(bs, const_nr, y_sum); lp.set_a(cs, const_nr, (n-m)); lp.set_a(c_, const_nr, 0); lp.set_a(d, const_nr, 0); lp.set_b(const_nr, s - x_sum);
+			const_nr++;
+			Solution sol_bankrupt = CGAL::solve_linear_program(lp, ET());
+			if (sol_bankrupt.is_infeasible()){
+				std::cout << "Bankrupt!" << std::endl;
+			}else {
+				if (sol_bankrupt.is_optimal()){
+					double sol_bank = ceil_to_double(sol_bankrupt.objective_value());
+					long sol_long = sol_bank;
+					std::cout << sol_long << std::endl;
+				}
+			}
+		}
+	}
+
+	return;
+}
+
+int main() {
+	std::ios_base::sync_with_stdio(false);
+	std::fstream in("./testsets/sample.in");
+	std::cin.rdbuf(in.rdbuf());
+
+	int t;
+	std::cin >> t;
+	for (int i = 0; i < t; ++i)
+		testcase();
+	return 0;
+}
