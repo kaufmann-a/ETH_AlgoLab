@@ -6,110 +6,128 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
-#include <string>
+
 
 struct Species {
-	int age;
-	int index_predecessor;
-	std::string name;
-	int myIndex;
-	std::vector<int> index_childs;
-	std::vector<std::pair<int, int>> search_list; //Here we save all queries with querynr and age to search for
+	std::string name = "";
+	int index = -1;
+	int age = 0;
+	std::vector<int> children;
+	int parent = -1;
+	std::vector<int> querries;
 
-	Species(int s, int e, std::string v) : age(s), index_predecessor(e), name(v) {}
+	bool operator <(const Species &other) const {
+		return name < other.name;
+	}
+
+	Species(std::string n, int a) : name(n), age(a){};
 };
 
-int index_of_spec(std::vector<Species> &species_list, std::string &name_spec){
-	int l, r; l = 0; r = species_list.size()-1;
+int find_species(std::vector<Species> &species, std::string search){
+	int l = 0; int r = species.size() -1;
 	while (l < r){
 		int mid = l + (r-l)/2;
-		if (species_list[mid].name == name_spec){
-			return mid;
-		}
-		if (species_list[mid].name > name_spec){
+		Species spec = species[mid];
+		if (spec.name >= search){
 			r = mid;
-		} else if (species_list[mid].name < name_spec){
+		} else {
 			l = mid+1;
 		}
 	}
 	return r;
 }
 
-bool specSort(Species sp1, Species sp2){
-	return sp1.name < sp2.name;
+std::string find_ancestor(std::vector<Species> &cur_line, int age_search){
+	int l = 0; int r = cur_line.size()-1;
+	std::string best = "";
+	while (l < r){
+		int mid = l + (r-l)/2;
+		int age_mid = cur_line[mid].age;
+		if (age_mid <= age_search){
+			best = cur_line[mid].name;
+			r = mid;
+		} else {
+			l = mid + 1;
+		}
+	}
+	return cur_line[r].name;
 }
 
-void recursiveSearch(std::vector<Species> &speciesList, std::vector<Species> &speciesPath, std::vector<std::string> &sol, int curSpecies){
-	for (int i = 0; i < speciesList[curSpecies].search_list.size(); i++){
-		int querynr = speciesList[curSpecies].search_list[i].first;
-		int ageToSearch = speciesList[curSpecies].search_list[i].second;
-		int l, r; l = 0; r = speciesPath.size()-1;
-		while (l < r){
-			int mid = l + (r-l)/2;
-			if (speciesPath[mid].age == ageToSearch){
-				r = mid;
-				break;
-			}
-			if (speciesPath[mid].age < ageToSearch){
-				r = mid;
-			} else if (speciesPath[mid].age > ageToSearch){
-				l = mid+1;
-			}
-		}
-		sol[querynr] = speciesPath[r].name;
+void solve_recursive(std::vector<Species> &species, std::vector<std::pair<std::string, int>> &querries, std::vector<std::string> &solutions, std::vector<Species> &cur_line, int cur_node){
+	//Push curnode
+	cur_line.push_back(species[cur_node]);
+	
+	//process querries of cur node
+	for (int i = 0; i < species[cur_node].querries.size(); i++){
+		int cur_querry_age = querries[species[cur_node].querries[i]].second;
+		std::string sol = find_ancestor(cur_line, cur_querry_age);
+		solutions[species[cur_node].querries[i]] = sol;
 	}
-	for (int i = 0; i < speciesList[curSpecies].index_childs.size(); i++){
-		int nextSpec = speciesList[curSpecies].index_childs[i];
-		speciesPath.push_back(speciesList[nextSpec]);
-		recursiveSearch(speciesList, speciesPath, sol, nextSpec);
+
+	//Process children
+	for (int i = 0; i < species[cur_node].children.size(); i++){
+		solve_recursive(species, querries, solutions, cur_line, species[cur_node].children[i]);
 	}
-	speciesPath.pop_back();
+
+	//Remove last child from cur line array
+	cur_line.pop_back();
 }
+
 
 void testcase() {
 	int n, q; std::cin >> n >> q;
-
-	std::vector<Species> species_list(n, Species(0, 0, ""));
-	std::vector<Species> species_path;
-	std::vector<std::string> solutions(q, "");
-
+	
+	std::vector<Species> species;
+	
+	//Read in all species
 	for (int i = 0; i < n; i++){
-		std::string s; int a; std::cin >> s >> a;
-		Species sp(a, -1, s);
-		species_list[i] = sp;
+		std::string name; int age; std::cin >> name >> age;
+		species.push_back(Species(name, age));
 	}
 
-	std::sort(species_list.begin(), species_list.end(), specSort);
+	std::sort(species.begin(), species.end());
 
+	//Update indices of species
+	for (int i = 0; i < n; i++){
+		species[i].index = i;
+	}
+
+	//Read relationships
 	for (int i = 0; i < n-1; i++){
-		std::string s, p; std::cin >> s >> p;
-		int index_s = index_of_spec(species_list, s);
-		int index_p = index_of_spec(species_list, p);
-		species_list[index_s].index_predecessor = index_p;
-		species_list[index_s].myIndex = index_s;
-		species_list[index_p].index_childs.push_back(index_s);
-		species_list[index_p].myIndex = index_p;
+		std::string s; std::string p; std::cin >> s >> p;
+		int spec_s = find_species(species, s);
+		int spec_p = find_species(species, p);
+		species[spec_s].parent = spec_p;
+		species[spec_p].children.push_back(spec_s);
 	}
 
+	//Read querries
+	std::vector<std::pair<std::string, int>> querries(q);
 	for (int i = 0; i < q; i++){
-		std::string s; int a; std::cin >> s >> a;
-		int index_s = index_of_spec(species_list, s);
-		species_list[index_s].search_list.push_back(std::make_pair(i, a));
+		std::string q_name; int q_age; std::cin >> q_name >> q_age;
+		querries[i] = std::make_pair(q_name, q_age);
+		int spec_index = find_species(species, q_name);
+		species[spec_index].querries.push_back(i);
 	}
 
 	//Find root
-	Species curSpecies = species_list[0];
-	while (curSpecies.index_predecessor != -1){
-		curSpecies = species_list[curSpecies.index_predecessor];
+	int start = 0; int store = 0;
+	while(start != -1){
+		store = start;
+		start = species[start].parent;
 	}
-	species_path.push_back(curSpecies);
 
-	recursiveSearch(species_list, species_path, solutions, curSpecies.myIndex);
+	//Solve querries recursively
+	std::vector<std::string> solutions(q);
+	std::vector<Species> cur_line;
+	solve_recursive(species, querries, solutions, cur_line, store);
 
+	//Print solutions
 	for (int i = 0; i < solutions.size(); i++){
 		std::cout << solutions[i] << " ";
 	}
 	std::cout << std::endl;
+	
 	return;
 }
 
