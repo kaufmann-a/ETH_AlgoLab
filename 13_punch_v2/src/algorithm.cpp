@@ -11,6 +11,7 @@ void testcase() {
 	int n, k; std::cin >> n >> k;
 
 	std::vector<std::pair<int, int>> b;
+	int largest_bev = 0;
 	for (int i = 0; i < n; i++){
 		int c, v; std::cin >> c >> v;
 		b.push_back(std::make_pair(c, v));
