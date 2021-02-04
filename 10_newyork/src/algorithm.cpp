@@ -12,7 +12,6 @@ void testcase() {
 	int n, m, k; std::cin >> n >> m >> k;
 
   std::vector<int> h(n);
-  std::vector<std::vector<int>> G(n);
   std::vector<int> parents(n, 0);
   std::vector<int> out_deg(n);
 
@@ -22,7 +21,6 @@ void testcase() {
 
   for (int i = 0; i < n-1; i++){
     int u, v; std::cin >> u >> v;
-    G[u].push_back(v);
     parents[v] = u;
     out_deg[u]++;
   }
