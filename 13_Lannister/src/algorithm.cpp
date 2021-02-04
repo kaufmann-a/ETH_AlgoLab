@@ -108,3 +108,27 @@ int main() {
 		testcase();
 	return 0;
 }
+
+//Math: 
+//Separation nobel from common:
+//sewage pipe: a_sx+b_sy+c_s = 0
+//water pipe : a_wx+b_wy+c_w = 0
+//x-coordinate on sewage line: x = frac{-c_s-b_sy}{a_s} --> a_s just scales, thus we define a_s = -1. It follows x = c_s+b_sy
+//Constraints: nobel: x \leq c_s+b_sy, common: x \geq c_s+b_sy
+
+//Minimizing distance d to waterpipe:
+//we know water pipe and sewage pipe are perpendicular, thus <a_s,b_s>*<a_w,b_w> = 0 it follows a_w = b_s*b_w
+//Here again we have a free parameter, we set a_w = 1, it follows b_w = \frac{1}{b_s}
+//y-coordinate on water line: y = \frac{-c_w-a_wx}{b_w} it follows y = \underbrace{-b_wb_s}_\text{c_}-b_sx
+//distance d from any point to waterpipe is to be minimized, thus we search min d such that distance \leq for every point:
+//Point over waterline: d \geq p_y - (c_ - b_sx), Point below waterline: d \geq (c_-b_sx)-p_y 
+//Constraints: -p_y \geq -d -c_+b_sy and p_y \geq -d + c_ -b_sx
+
+//Cost constraint:
+//We need to build a constraint on the sum of the sewage pipe-lengths
+//pipe-length nobel house: dist = c_s+bs_y-p_x, pipe-length for common house: dist = p_x - (c_s+b_sy)
+//We just summ up all the lengths and build the constraint out of it: 
+//1. sum_x = \sum_\text{nobel} -x_i + \sum_\text{common} +x_i
+//2. sum_y = \sum_\text{nobel} +y_i + \sum_\text{common} -y_i
+//3. c = (n-m)
+//Constraint: sum_y*b_s+c(n-m) = s - x_sum
